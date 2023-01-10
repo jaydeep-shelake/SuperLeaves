@@ -1,0 +1,23 @@
+{
+  "name": "slackbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src",
+  "scripts": {
+    "start": "node src/app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@slack/interactive-messages": "^2.0.2",
+    "@slack/rtm-api": "^6.0.0",
+    "@slack/web-api": "^6.8.0",
+    "axios": "^1.2.2",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "mongoose": "^6.8.3",
+    "request": "^2.88.2",
+    "tsscmp": "^1.0.6"
+  }
+}

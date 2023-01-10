@@ -1,0 +1,76 @@
+{
+    "display_information": {
+        "name": "SuperBot",
+        "description": "Bot For leaves",
+        "background_color": "#303133",
+        "long_description": "Hello there Mate !, I'm here to help you manage your leave so your team knows when you are OOO. To start click on button bellow to create leave. Get started by clicking on the create button."
+    },
+    "features": {
+        "app_home": {
+            "home_tab_enabled": true,
+            "messages_tab_enabled": false,
+            "messages_tab_read_only_enabled": false
+        },
+        "bot_user": {
+            "display_name": "SuperBot",
+            "always_online": true
+        }
+    },
+    "oauth_config": {
+        "redirect_urls": [
+            "https://879e-106-51-88-115.in.ngrok.io/auth"
+        ],
+        "scopes": {
+            "user": [
+                "users.profile:read",
+                "users.profile:write"
+            ],
+            "bot": [
+                "bookmarks:read",
+                "bookmarks:write",
+                "calls:read",
+                "calls:write",
+                "channels:read",
+                "chat:write",
+                "dnd:read",
+                "files:read",
+                "groups:read",
+                "im:history",
+                "im:read",
+                "im:write",
+                "mpim:history",
+                "mpim:read",
+                "mpim:write",
+                "pins:write",
+                "reactions:read",
+                "reactions:write",
+                "remote_files:read",
+                "remote_files:share",
+                "remote_files:write",
+                "team:read",
+                "users.profile:read",
+                "users:read",
+                "users:read.email",
+                "users:write"
+            ]
+        }
+    },
+    "settings": {
+        "event_subscriptions": {
+            "request_url": "https://879e-106-51-88-115.in.ngrok.io/events",
+            "bot_events": [
+                "app_home_opened",
+                "app_uninstalled",
+                "channel_left"
+            ]
+        },
+        "interactivity": {
+            "is_enabled": true,
+            "request_url": "https://879e-106-51-88-115.in.ngrok.io/interactions",
+            "message_menu_options_url": "http://localhost:3000/options"
+        },
+        "org_deploy_enabled": false,
+        "socket_mode_enabled": false,
+        "token_rotation_enabled": false
+    }
+}
