@@ -23,7 +23,9 @@
         "scopes": {
             "user": [
                 "users.profile:read",
-                "users.profile:write"
+                "users.profile:write",
+                "identity.basic",
+                "identity.email"
             ],
             "bot": [
                 "bookmarks:read",

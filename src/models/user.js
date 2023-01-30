@@ -2,36 +2,45 @@ const mongoose = require("mongoose")
 const userSchema  = new mongoose.Schema({
     userId:{
         type:String,
-        required:true
+        unique:true
     },
-    remainingLeavs:{
-        type:Number,
-        default:32,
+    name:{
+        type:String,
+        default:" ",
     },
-    totalEranedLevaRemaining:{
+    email:{
+     type:String,
+     default:" ",
+    },
+    teamId:{
+    type:String,
+    default:" "
+    },
+    avatar:{
+     type:String,
+     default:" "
+    },
+    userToken:{
+        type:String,
+        default:" ",
+    },
+    earnedLeaves:{
         type:Number,
         default:15,
     },
-    totalSickLevaRemaining:{
+    sickLeaves:{
         type:Number,
         default:12,
     },
-    totalFestiveLevaRemaining:{
+    festiveLeaves:{
         type:Number,
-        default:5,
+        default:5
     },
-    approvedLeavs:{
+    remoteWork:{
         type:Number,
-        default:0,
-    },
-    rejectedLeavs:{
-        type:Number,
-        default:0,
-    },
-    team:{
-        type:String,
-        default:"web"
+        default:8
     }
+
 
 })
 

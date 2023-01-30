@@ -4,6 +4,9 @@ const leaveSchema = new mongoose.Schema({
         type:String,
        
     },
+    name:{
+        type:String
+    },
     dateFrom:{
         type:String,
         
@@ -30,6 +33,10 @@ const leaveSchema = new mongoose.Schema({
         type:String,
         
     },
+    substituteId:{
+       type:String,
+       default:""
+    },
     approved:{
     type:Boolean,
     default:false
@@ -44,7 +51,10 @@ const leaveSchema = new mongoose.Schema({
     },
     team:{
         type:String,
-        default:"web"
+        default:"Web"
+    },
+    messageTs:{
+        type:String
     }
 })
 

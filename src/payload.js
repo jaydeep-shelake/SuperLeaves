@@ -123,7 +123,18 @@ welcome_message_testing: context => {
             },
             value: "view_analytics"
 
-          }
+          },
+          {
+            action_id: "make_standup",
+            type: "button",
+            text: {
+              type: "plain_text",
+              text: "Create Standup"
+            },
+            style: "primary",
+            value: "make_standup"
+
+          },
         ]
       }
     ],
@@ -227,17 +238,24 @@ welcome_message: context => {
             initial_option: {
               text: {
                 type: "plain_text",
-                text: "Vacation"
+                text: "Earned Leaves"
               },
-              value: "vacation"
+              value: "earned leaves"
             },
             options: [
               {
                 text: {
                   type: "plain_text",
-                  text: "Vacation"
+                  text: "Festive Leaves"
                 },
-                value: "vacation"
+                value: "festive leaves"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "Remote Work"
+                },
+                value: "remote"
               },
               {
                 text: {
@@ -249,9 +267,9 @@ welcome_message: context => {
               {
                 text: {
                   type: "plain_text",
-                  text: "Sick"
+                  text: "Sick Leaves"
                 },
-                value: "sick"
+                value: "sick leaves"
               }
             ]
           }
@@ -694,6 +712,8 @@ welcome_message: context => {
             }
           ]
         }
+
+
       ]
     };
   },
@@ -702,6 +722,13 @@ welcome_message: context => {
     return{
       channel:context.metadata.channel,
       text:`<@${context.metadata.requester}> \n is on leave from \`${new Date(context.metadata.dateFrom).toDateString()}\` to \`${new Date(context.metadata.dateTo).toDateString()}\`  you are choosen as substitute`
+    }
+  },
+
+  dailyNotification: context=>{
+    return{
+     channel:"C04H0C61MTR",
+     text:`Today’s upcoming absences:\n ${context.leaves.map((item,i)=>`:palm_tree: <@${item.userId}> \n \`${new Date(item.dateFrom).toDateString()}\` to \`${new Date(item.dateTo).toDateString()}\` \n`)}`
     }
   },
 
@@ -754,7 +781,7 @@ welcome_message: context => {
   },
 
   viewAnalytics:context=>{
-    console.log("context",context)
+    
     return{
       type: "modal",
       title: {
@@ -763,6 +790,7 @@ welcome_message: context => {
       },
       callback_id: "analytics",
       blocks: [
+        
         {
           type: "section",
           block_id: "table",
@@ -789,10 +817,445 @@ welcome_message: context => {
 
       ]
     }
+  },
+
+
+  add_to_channel: context => {
+    return{
+     channel:context.channel,
+     text:`<@${context.userId}> Which channel do you want to organize your standup?`,
+     blocks:[
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `<@${context.userId}> Which channel do you want to organize your standup?`,
+          
+        }
+      },
+      {
+        type: "actions",
+        block_id: "select",
+        elements: [
+          {
+            type: "conversations_select",
+            placeholder: {
+              type: "plain_text",
+              text: "Select channel",
+              emoji: true
+            },
+            filter: {
+              include: ["public","private"]
+            },
+            action_id: "channel_select"
+          },
+         
+        ]
+      },
+     
+    ],
+
+    } 
+  },
+  standupModal: context => {
+   return{
+    type: "modal",
+      title: {
+        type: "plain_text",
+        text: `Create channel ${context.name}`,
+      },
+      callback_id: "request_standup",
+      blocks: [
+        {
+          block_id: "standup_users",
+          type: "input",
+          label: {
+            type: "plain_text",
+            text: "Who participates (no bot/app user please, at least 2 users)?"
+          },
+          element: {
+            action_id: "standup_user_id",
+            type: "multi_users_select",
+            initial_users:[context.userId]
+          }
+        },
+
+        {
+          type: "input",
+          block_id: "week_type",
+          label: {
+            type: "plain_text",
+            text: "Which days in a week?"
+          },
+          element: {
+            action_id: "days_in_week",
+            type: "multi_static_select",
+            placeholder: {
+              type: "plain_text",
+              text: "Select days"
+            },
+            initial_options:[
+              {
+              text: {
+                type: "plain_text",
+                text: "Mon"
+              },
+              value: "monday"
+            },
+            {
+              text: {
+                type: "plain_text",
+                text: "Tue"
+              },
+              value: "tuesday"
+            },
+            {
+              text: {
+                type: "plain_text",
+                text: "Wed"
+              },
+              value: "wednesday"
+            },
+            {
+              text: {
+                type: "plain_text",
+                text: "Thu"
+              },
+              value: "thursday"
+            },
+            {
+              text: {
+                type: "plain_text",
+                text: "Fri"
+              },
+              value: "friday"
+            }
+          ],
+            options: [
+              {
+                text: {
+                  type: "plain_text",
+                  text: "Mon"
+                },
+                value: "monday"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "Tue"
+                },
+                value: "tuesday"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "Wed"
+                },
+                value: "wednesday"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "Thu"
+                },
+                value: "thursday"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "Fri"
+                },
+                value: "friday"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "Sat"
+                },
+                value: "saturday"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "Sun"
+                },
+                value: "sunday"
+              },
+            ]
+          }
+        },
+        {
+          type: "input",
+          block_id: "standup_time",
+          label: {
+            type: "plain_text",
+            text: "at what time?"
+          },
+          element: {
+            action_id: "daily_time",
+            type: "static_select",
+            placeholder: {
+              type: "plain_text",
+              text: "Select an item"
+            },
+            initial_option: {
+              text: {
+                type: "plain_text",
+                text: "10:30"
+              },
+              value: "10:30"
+            },
+            options: [
+              {
+                text: {
+                  type: "plain_text",
+                  text: "10:30"
+                },
+                value: "10:30"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "11:00"
+                },
+                value: "11:00"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "11:30"
+                },
+                value: "11:30"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "12:00"
+                },
+                value: "12:00"
+              }
+            ]
+          }
+        },
+      ],
+      close: {
+        type: "plain_text",
+        text: "Back"
+      },
+      submit: {
+        type: "plain_text",
+        text: "Next"
+      },
+      private_metadata: JSON.stringify(context)
+   }
+  },
+  finish_standup:()=>{
+    return {
+      response_action: "update",
+      view: {
+        callback_id: "finish_leave",
+        clear_on_close: true,
+        type: "modal",
+        title: {
+          type: "plain_text",
+          text: "Success :tada:",
+          emoji: true
+        },
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "Stand up has created successfully !"
+            }
+          }
+        ],
+        close: {
+          type: "plain_text",
+          text: "Done"
+        }
+      }
+    };
+  },
+  post_standup_message:(context)=>{
+    return{
+      channel:context.channelId,
+      text:`*Congratulation, your standup was created and scheduled!* \n The meeting time is \`${context.standUpTime}\` (India Time +05:30). Alice will remind you \`30 minutes\` before the meeting. Once you write your answers to Alice's questions, she reports to the \`${context.name}\` channel at the meeting time \n _Participants_:${context.users.map((item)=>`<@${item.userId}> ,`)}.\n
+      _Interview questions_:\n
+      ${context.quetions.map((item)=>`${item.quetion}? \n`)}
+
+      `,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*Congratulation, your standup was created and scheduled!* \n The meeting time is \`${context.standUpTime}\` (India Time +05:30). Alice will remind you \`30 minutes\` before the meeting. Once you write your answers to Alice's questions, she reports to the \`${context.name}\` channel at the meeting time \n _Participants_:${context.users.map((item)=>`<@${item.userId}> `)}.\n_Interview questions_:\n${context.quetions.map((item)=>`${item.quetion} \n`)}
+            `
+          }
+        },
+        {
+          type: "divider"
+        },
+{
+          type: "actions",
+          block_id: "actionblock789",
+          elements: [
+            {
+              action_id: "edit_channel",
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "Edit Channel",
+                emoji: true
+              },
+              style: "primary",
+              value: JSON.stringify(context)
+            },
+            {
+              action_id: "edit_users",
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "Edit Users",
+                emoji: true
+              },
+              style: "primary",
+              value: JSON.stringify(context)
+            },
+            {
+              
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "Advance setting",
+                emoji: true
+              },
+              style: "primary",
+              value: JSON.stringify(context),
+              url: context.url
+            }
+          ]
+        }
+
+      ]
+    }
+  },
+  open_standup:(context)=>{
+  return{
+    channel:context.channel,
+    text:`Hello, it's time to start your today's standup for \`${context.name}\`. Please answer following questions (reply skip to not report today).What did you complete yesterday?`,
+    blocks:[
+      {
+        type: "section",
+        text:{
+          type:"mrkdwn",
+          text:`Hello, it's time to start your today's standup for \`${context.name}\`. Please answer following questions (reply skip to not report today).What did you complete yesterday?`
+        },
+      },
+      {
+        type: "divider"
+      },
+      {
+        type: "actions",
+        block_id: "actionblock789",
+        elements: [
+          {
+            action_id: "open_standup_dailog",
+            type: "button",
+            text: {
+              type: "plain_text",
+              text: "Open dialog",
+              emoji: true
+            },
+            style: "primary",
+            value: JSON.stringify(context)
+          },
+          {
+            action_id: "skip_standup_dailog",
+            type: "button",
+            text: {
+              type: "plain_text",
+              text: "I skip",
+              emoji: true
+            },
+            style: "primary",
+            value: JSON.stringify(context)
+          },
+        ]
+      }
+    ]
   }
-  
+  },
+  open_standup_dialog:(context)=>{
+   return{
+    type: "modal",
+    title: {
+      type: "plain_text",
+      text: `Standup for  ${context.name}`,
+    },
+    callback_id: "post_answers_standup",
+    blocks:context.quetions.map((item)=>{
+      return {
+        block_id: `desc_${item._id}`,
+        type: "input",
+        label: {
+          type: "plain_text",
+          text: `${item.quetion} ?`
+        },
+        optional: false,
+        element: {
+          action_id: `desc_${item._id}`,
+          type: "plain_text_input",
+          max_length: 600,
+          placeholder: {
+            type: "plain_text",
+            text:
+              "required"
+          },
+          multiline: true
+        }
+      }
+    }),
+    close: {
+      type: "plain_text",
+      text: "Cancel"
+    },
+    submit: {
+      type: "plain_text",
+      text: "Submit"
+    },
+    private_metadata: JSON.stringify(context)
+   }
+  },
+  stantup_desc: context => {
+    return 
+  },
+  daily_standup_ans:(context)=>{
+    console.log("context form block kit",context)
+    return{
+      channel:context.channelId,
+      text:"Hey <!here>, today's standup Web Daily Stand Up complete:coffee::coffee::coffee:",
+      blocks:[ {
+        type: "section",
+        text:{
+          type:"mrkdwn",
+          text:`Hey <!here>, today's standup Web Daily Stand Up complete:coffee::coffee::coffee:`
+        },
+        
+      },
+      {
+        type: "divider"
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `${context.quetions.map((que,i)=>`*${que.quetion}* \n${context.result.allAns.map((item)=>`<@${item.userId}> \n ${item.ans[i].ans}\n`)}
+          `) }`,
+        }
+      }
+    ] 
+    }
+  }
 }
-
-
-
-
