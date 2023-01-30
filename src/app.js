@@ -686,7 +686,11 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
        const allAnsValue =payload.view.state.values
        const arrayOfAns = Object.values(allAnsValue) // converted objects to array
        const arrayOfAnsOnly = arrayOfAns.map(obj => Object.values(obj)[0].value)
-         const existingStandup= await StandupAns.findOne({standupName:ansmetadata.name,date:new Date().toISOString().slice(0, 10)})
+       const newDate = new Date();
+          const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
+          const ISTTime = new Date(newDate.getTime() + offset * 60 * 1000);
+          const date = ISTTime.toISOString();
+         const existingStandup= await StandupAns.findOne({standupName:ansmetadata.name,date:date.slice(0, 10)})
          if(existingStandup){
           await StandupAns.updateOne({standupName:ansmetadata.name},{$addToSet:{
             allAns:{userId:user,ans:ansmetadata.quetions.map((item,i)=>{
