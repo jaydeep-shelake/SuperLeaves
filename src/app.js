@@ -206,12 +206,12 @@ app.post('/events',(req,res)=>{
 
 })
 function dailySatndupAnsPost(doc){
-  let timeZone="Asia/Kolkata"
+  
   console.log("came in posting mesage")
   const hour=doc.standUpTime.split(":")[0] // post one hour before
   const min=doc.standUpTime.split(":")[1]; // 30 12 * * *
   console.log("hour from posting ans",hour)
-  let j2 = schedule.scheduleJob(`${min} ${hour} * * *`,function(){
+  let j2 = schedule.scheduleJob(`35 9 * * *`,function(){
     const today = new Date();
     const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
     const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
@@ -234,15 +234,15 @@ function dailySatndupAnsPost(doc){
     ;
 }
  })
-}.bind(null,timeZone))
+}.bind(null))
  //
 }
 function dailSatndupUpdate(){
   console.log("entered in job")
   let allStandUps=[]
-  let timeZone = 'Asia/Kolkata';
+  // let timeZone = 'Asia/Kolkata';
   // finding daily standups at 10 am moring 
-  let j2 = schedule.scheduleJob('50 11 * * *', function(){
+  let j2 = schedule.scheduleJob('0 9 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
@@ -256,7 +256,7 @@ function dailSatndupUpdate(){
         const min=doc.standUpTime.split(":")[1];
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          let j = schedule.scheduleJob(`0 ${hour} * * *`, function(){
+          let j = schedule.scheduleJob(`30 9 * * *`, function(){
             
            console.log("message will be posting at",hour,":",min)
             doc.users.forEach(async(item)=>{
@@ -272,13 +272,13 @@ function dailSatndupUpdate(){
              })
              dailySatndupAnsPost(doc)
             
-          }.bind(null,timeZone));
+          }.bind(null));
         })
     })
     
     
     
-  }.bind(null,timeZone));
+  }.bind(null));
  
    
 
