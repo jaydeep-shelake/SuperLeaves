@@ -1208,10 +1208,10 @@ welcome_message: context => {
           action_id: `desc_${item._id}`,
           type: "plain_text_input",
           max_length: 600,
+          initial_value:"",
           placeholder: {
             type: "plain_text",
-            text:
-              "required"
+            text:"required"
           },
           multiline: true
         }
@@ -1228,6 +1228,48 @@ welcome_message: context => {
     private_metadata: JSON.stringify(context)
    }
   },
+
+  open_standup_dialog_with_value:(context)=>{
+    return{
+     type: "modal",
+     title: {
+       type: "plain_text",
+       text: `Standup for  ${context.name}`,
+     },
+     callback_id: "post_answers_standup",
+     blocks:context.quetions.map((item,i)=>{
+       return {
+         block_id: `desc_${item._id}`,
+         type: "input",
+         label: {
+           type: "plain_text",
+           text: `${item.quetion} ?`
+         },
+         optional: false,
+         element: {
+           action_id: `desc_${item._id}`,
+           type: "plain_text_input",
+           max_length: 600,
+           initial_value:context.userAns.ans[i].ans,
+           placeholder: {
+             type: "plain_text",
+             text:"required"
+           },
+           multiline: true
+         }
+       }
+     }),
+     close: {
+       type: "plain_text",
+       text: "Cancel"
+     },
+     submit: {
+       type: "plain_text",
+       text: "Submit"
+     },
+     private_metadata: JSON.stringify(context)
+    }
+   },
   stantup_desc: context => {
     return 
   },
@@ -1257,5 +1299,31 @@ welcome_message: context => {
       }
     ] 
     }
-  }
+  },
+  daily_standup_ans_single:(context)=>{
+    console.log("context form block kit",context)
+    return{
+      channel:context.channelId,
+      text:"Hey <!here>, today's standup Web Daily Stand Up complete:coffee::coffee::coffee:",
+      blocks:[ {
+        type: "section",
+        text:{
+          type:"mrkdwn",
+          text:`Hey <!here>, today's standup Web Daily Stand Up complete:coffee::coffee::coffee:`
+        },
+        
+      },
+      {
+        type: "divider"
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `${context.quetions.map((que,i)=>`*${que.quetion}* \n${context.result.allAns.map((item)=>`<@${item.userId}> \n ${item.ans[i].ans}\n`)}`) }`,
+        }
+      }
+    ] 
+    }
+  },
 }

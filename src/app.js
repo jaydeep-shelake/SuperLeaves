@@ -24,6 +24,7 @@ const holidayRouter = require('./routes/holidayRouter');
 const Standup = require('./models/standup');
 const standupRouter = require('./routes/standupRouter');
 const StandupAns = require('./models/standupAns');
+const {convertISTtoUTC, getTimeComparison} = require('./converter')
 // const rtm = new RTMClient(process.env.SLACK_TOKEN);
 const  web = new WebClient(process.env.SLACK_TOKEN)
 const app = express()
@@ -208,10 +209,11 @@ app.post('/events',(req,res)=>{
 function dailySatndupAnsPost(doc){
   
   console.log("came in posting mesage")
-  const hour=doc.standUpTime.split(":")[0] // post one hour before
-  const min=doc.standUpTime.split(":")[1]; // 30 12 * * *
+  const istSTringPost = convertISTtoUTC(doc.standUpTime)
+  const hour=istSTringPost.split(":")[0] // post one hour before
+  const min=istSTringPost.split(":")[1]; // 30 12 * * *
   console.log("hour from posting ans",hour)
-  let j2 = schedule.scheduleJob(`30 9 * * *`,function(){
+  let j2 = schedule.scheduleJob(`${min} ${hour} * * *`,function(){
     const today = new Date();
     const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
     const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
@@ -243,23 +245,22 @@ function dailSatndupUpdate(){
   // let timeZone = 'Asia/Kolkata';
   // finding daily standups at 10 am moring 
   let rule = new schedule.RecurrenceRule();
-    rule.hour = 9;
-    rule.minute = 20;
-  let j2 = schedule.scheduleJob(rule, function(){
+   
+  // collecting documents daily 10 AM - 30 4 * * *
+  let j2 = schedule.scheduleJob('30 4 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
       allStandUps=result
       console.log('allStandsups',allStandUps)
-
       allStandUps.forEach((doc)=>{
-       
-        const hour=doc.standUpTime.split(":")[0] // post one hour before
+       const istString = convertISTtoUTC(doc.standUpTime)
+        const hour=parseInt(istString.split(":")[0])-1 // post one hour before
         console.log('hour',hour)
-        const min=doc.standUpTime.split(":")[1];
+        const min=istString.split(":")[1];
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          let j = schedule.scheduleJob(`25 9 * * *`, function(){
+          let j = schedule.scheduleJob(`${min} ${hour} * * *`, function(){
             
            console.log("message will be posting at",hour,":",min)
             doc.users.forEach(async(item)=>{
@@ -507,11 +508,24 @@ app.post("/interactions",async(req,res)=>{
     case "open_standup_dailog":
       const dialogmetadata= JSON.parse(action.value)
        const standupData= await Standup.findOne({name:dialogmetadata.name})
-       
-       await api.callAPIMethodPost("views.open",teamId,{
-        trigger_id:payload.trigger_id,
-        view: block.open_standup_dialog({...dialogmetadata,msgTs:payload.message.ts,standupId:standupData._id,creatorId:standupData.creatorId,quetions:standupData.quetions,standUpTime:standupData.standUpTime})
-       })
+       const standupAns = await StandupAns.findOne({standupName:dialogmetadata.name})
+        if(standupAns!==null){
+          const userAns= standupAns.allAns.find((item)=>item.userId===payload.user.id)
+          console.log("user ans",userAns)
+          if(userAns){
+            await api.callAPIMethodPost("views.open",teamId,{
+              trigger_id:payload.trigger_id,
+              view: block.open_standup_dialog_with_value({...dialogmetadata,msgTs:payload.message.ts,standupId:standupData._id,creatorId:standupData.creatorId,quetions:standupData.quetions,standUpTime:standupData.standUpTime,userAns})
+             })
+          }
+        }
+        else{
+          await api.callAPIMethodPost("views.open",teamId,{
+            trigger_id:payload.trigger_id,
+            view: block.open_standup_dialog({...dialogmetadata,msgTs:payload.message.ts,standupId:standupData._id,creatorId:standupData.creatorId,quetions:standupData.quetions,standUpTime:standupData.standUpTime})
+           })
+        }
+      
        break;
       
        
@@ -685,17 +699,45 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
         
     case "post_answers_standup":
        const ansmetadata = JSON.parse(payload.view.private_metadata)
-      //  console.log("ans metadata",ansmetadata)
+        const standup= await Standup.findOne({name:ansmetadata.name})
+        const quetions = standup.quetions
+        const standupChannelId = standup.channelId
+               
+        const standupTime = convertISTtoUTC(standup.standUpTime)
        const user=payload.user.id
        const allAnsValue =payload.view.state.values
        const arrayOfAns = Object.values(allAnsValue) // converted objects to array
        const arrayOfAnsOnly = arrayOfAns.map(obj => Object.values(obj)[0].value)
-       const newDate = new Date();
+          const newDate = new Date();
           const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
           const ISTTime = new Date(newDate.getTime() + offset * 60 * 1000);
           const date = ISTTime.toISOString();
          const existingStandup= await StandupAns.findOne({standupName:ansmetadata.name,date:date.slice(0, 10)})
          if(existingStandup){
+          const exitsingUserAns = existingStandup.allAns.find((item)=>item.userId==payload.user.id)
+          if(exitsingUserAns){
+           await StandupAns.updateOne({standupName:ansmetadata.name},{
+            $pull:{
+              allAns:{userId:user}
+            }
+           })
+           const result= await StandupAns.updateOne({standupName:ansmetadata.name},{$addToSet:{
+              allAns:{userId:user,ans:ansmetadata.quetions.map((item,i)=>{
+                return{
+                  questionId:item._id,
+                  question:item.quetion,
+                  ans:arrayOfAnsOnly[i],
+                  
+                }
+             })}
+            }})
+            // const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
+            //  if(getTimeComparison(`${standupTime} AM`, currentTime)){
+            //   await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result}))
+
+            //  }
+          }
+          else{
           await StandupAns.updateOne({standupName:ansmetadata.name},{$addToSet:{
             allAns:{userId:user,ans:ansmetadata.quetions.map((item,i)=>{
               return{
@@ -706,6 +748,13 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
               }
            })}
           }})
+          // const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
+          // if(getTimeComparison(`${standupTime} AM`, currentTime)){
+          //  await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result}))
+
+          // }
+
+        }
          }
          else{
           const today = new Date();
@@ -717,7 +766,7 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
             creatorId:ansmetadata.creatorId,
             channelId:ansmetadata.selectedChannel,
             standupName:ansmetadata.name,
-            standUpTime:"",
+            
             date:date.slice(0, 10),
             allAns:[{userId:user,ans:ansmetadata.quetions.map((item,i)=>{
                return{
@@ -729,7 +778,12 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
             })}] 
            })
    
-           await newStandupAns.save()
+          const result= await newStandupAns.save()
+          // const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
+          // if(getTimeComparison(`${standupTime} AM`, currentTime)){
+          //  await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result}))
+
+          // }
          }
         
         return res.send(block.finish_standup())
@@ -794,10 +848,7 @@ module.exports = socket;
   
 server.listen(PORT,()=>{
   console.log("server running",PORT)
-  time = new Date()
-  console.log(
-    time.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
-  );
+  
   //2023-01-31T08:02:03.053Z
   //2023-01-31T08:03:47.075Z
  
