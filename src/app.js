@@ -792,6 +792,7 @@ module.exports = socket;
   
 server.listen(PORT,()=>{
   console.log("server running",PORT)
+  console.log(new Date())
  
 })
 
