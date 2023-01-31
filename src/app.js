@@ -792,7 +792,12 @@ module.exports = socket;
   
 server.listen(PORT,()=>{
   console.log("server running",PORT)
-  console.log(new Date())
+  var time = new Date();
+  console.log(
+    time.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
+  );
+  //2023-01-31T08:02:03.053Z
+  //2023-01-31T08:03:47.075Z
  
 })
 
