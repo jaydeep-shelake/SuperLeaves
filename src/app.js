@@ -247,7 +247,7 @@ function dailSatndupUpdate(){
   let rule = new schedule.RecurrenceRule();
    
   // collecting documents daily 10 AM - 30 4 * * *
-  let j2 = schedule.scheduleJob('30 5 * * *', function(){
+  let j2 = schedule.scheduleJob('10 6 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
@@ -262,9 +262,9 @@ function dailSatndupUpdate(){
         console.log('min',ISTmin)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          let j = schedule.scheduleJob(`0 6 * * *`, function(){
+          let j = schedule.scheduleJob(`15 6 * * *`, function(){
             
-           console.log("message will be posting at",hour,":",min)
+           
             doc.users.forEach(async(item)=>{
               try {
                 const standupUserRes = await web.conversations.open({
