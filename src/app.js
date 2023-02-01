@@ -213,7 +213,7 @@ function dailySatndupAnsPost(doc){
   const hour=istSTringPost.split(":")[0] // post one hour before
   const min=istSTringPost.split(":")[1]; // 30 12 * * *
   console.log("hour from posting ans",hour)
-  let j2 = schedule.scheduleJob(`${min} ${hour} * * *`,function(){
+  let j2 = schedule.scheduleJob(`0 7 * * *`,function(){
     const today = new Date();
     const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
     const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
@@ -247,7 +247,7 @@ function dailSatndupUpdate(){
   let rule = new schedule.RecurrenceRule();
    
   // collecting documents daily 10 AM - 30 4 * * *
-  let j2 = schedule.scheduleJob('50 4 * * *', function(){
+  let j2 = schedule.scheduleJob('30 5 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
@@ -262,7 +262,7 @@ function dailSatndupUpdate(){
         console.log('min',ISTmin)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          let j = schedule.scheduleJob(`${ISTmin} ${ISThour} * * *`, function(){
+          let j = schedule.scheduleJob(`0 6 * * *`, function(){
             
            console.log("message will be posting at",hour,":",min)
             doc.users.forEach(async(item)=>{
@@ -851,7 +851,7 @@ module.exports = socket;
 server.listen(PORT,()=>{
   console.log("server running",PORT)
   const date = new Date("2023-01-31 12:30 AM");
-console.log(date.toLocaleTimeString())
+console.log(date.toUTCString())
   //2023-01-31T08:02:03.053Z
   //2023-01-31T08:03:47.075Z
  
