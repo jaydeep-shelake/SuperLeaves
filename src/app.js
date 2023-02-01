@@ -247,7 +247,7 @@ function dailSatndupUpdate(){
   let rule = new schedule.RecurrenceRule();
    
   // collecting documents daily 10 AM - 30 4 * * *
-  let j2 = schedule.scheduleJob('30 4 * * *', function(){
+  let j2 = schedule.scheduleJob('50 4 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
@@ -255,12 +255,14 @@ function dailSatndupUpdate(){
       console.log('allStandsups',allStandUps)
       allStandUps.forEach((doc)=>{
        const istString = convertISTtoUTC(doc.standUpTime)
-        const hour=parseInt(istString.split(":")[0])-1 // post one hour before
-        console.log('hour',hour)
-        const min=istString.split(":")[1];
+       console.log("IST String",istString)
+        const ISThour=parseInt(istString.split(":")[0])-1 // post one hour before
+        console.log('hour',ISThour)
+        const ISTmin=istString.split(":")[1];
+        console.log('min',ISTmin)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          let j = schedule.scheduleJob(`${min} ${hour} * * *`, function(){
+          let j = schedule.scheduleJob(`${ISTmin} ${ISThour} * * *`, function(){
             
            console.log("message will be posting at",hour,":",min)
             doc.users.forEach(async(item)=>{
