@@ -851,7 +851,7 @@ module.exports = socket;
 server.listen(PORT,()=>{
   console.log("server running",PORT)
   const date = new Date("2023-01-31 12:30 AM");
-console.log(time.toLocaleTimeString())
+console.log(date.toLocaleTimeString())
   //2023-01-31T08:02:03.053Z
   //2023-01-31T08:03:47.075Z
  
