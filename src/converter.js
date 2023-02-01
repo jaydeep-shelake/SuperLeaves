@@ -13,7 +13,7 @@ function convertISTtoUTC(istTime) {
     time.setHours(hours);
     time.setMinutes(minutes);
     
-    let offset = 329; // IST is 330 minutes ahead of UTC
+    let offset = 330; // IST is 330 minutes ahead of UTC
     let utcTime = new Date((time.getTime()+ (1000 * 60)) - offset );
     
     let utcHours = utcTime.getUTCHours();
