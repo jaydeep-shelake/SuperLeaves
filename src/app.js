@@ -247,7 +247,7 @@ function dailSatndupUpdate(){
   let rule = new schedule.RecurrenceRule();
    
   // collecting documents daily 10 AM - 30 4 * * *
-  let j2 = schedule.scheduleJob('10 6 * * *', function(){
+  let j2 = schedule.scheduleJob('30 6 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
@@ -262,7 +262,7 @@ function dailSatndupUpdate(){
         console.log('min',ISTmin)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          let j = schedule.scheduleJob(`15 6 * * *`, function(){
+          let j = schedule.scheduleJob(`35 6 * * *`, function(){
             
            
             doc.users.forEach(async(item)=>{
@@ -508,9 +508,13 @@ app.post("/interactions",async(req,res)=>{
       })
       break;
     case "open_standup_dailog":
+      const today = new Date();
+      const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
+      const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
+      const todaysDate = ISTTime.toISOString();
       const dialogmetadata= JSON.parse(action.value)
        const standupData= await Standup.findOne({name:dialogmetadata.name})
-       const standupAns = await StandupAns.findOne({standupName:dialogmetadata.name})
+       const standupAns = await StandupAns.findOne({standupName:dialogmetadata.name,date:todaysDate.slice(0, 10)})
         if(standupAns!==null){
           const userAns= standupAns.allAns.find((item)=>item.userId===payload.user.id)
           console.log("user ans",userAns)
