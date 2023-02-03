@@ -24,7 +24,8 @@ const holidayRouter = require('./routes/holidayRouter');
 const Standup = require('./models/standup');
 const standupRouter = require('./routes/standupRouter');
 const StandupAns = require('./models/standupAns');
-const {convertISTtoUTC, getTimeComparison} = require('./converter')
+const {convertISTtoUTC, getTimeComparison, dateConverter} = require('./converter');
+const { showYesterdaysAns } = require('./controllers/standUpModal');
 // const rtm = new RTMClient(process.env.SLACK_TOKEN);
 const  web = new WebClient(process.env.SLACK_TOKEN)
 const app = express()
@@ -213,19 +214,39 @@ function dailySatndupAnsPost(doc){
   const hour=istSTringPost.split(":")[0] // post one hour before
   const min=istSTringPost.split(":")[1]; // 30 12 * * *
   console.log("hour from posting ans",hour)
-  let j2 = schedule.scheduleJob(`0 7 * * *`,function(){
+  let j2 = schedule.scheduleJob(`19 1 * * *`,function(){
     const today = new Date();
     const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
     const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
     const date = ISTTime.toISOString().slice(0, 10);
  StandupAns.findOne({$and: [{date:date},{standupName:doc.name}]}).then(async(result)=>{
-  console.log("result",result)
+    const users = doc.users // users in standup
+    const ansUsers = result.allAns //users who had ans the standup
+    const notAnsUsers = users.filter((item)=> !ansUsers.some(obj2 => obj2.userId === item.userId))
+    console.log("not ans users",notAnsUsers)
   if(result!==null){
    
       console.log("run at",hour,":",min)
       try{
-        
-        await web.chat.postMessage(block.daily_standup_ans({channelId:doc.channelId,quetions:doc.quetions,result}))
+        let ansBlocks=[]
+         doc.quetions.forEach((item,i)=>{
+          ansBlocks.push(
+
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: `${item.quetion}\n${result.allAns.map((itm)=>`<@${itm.userId}>\n${itm.ans[i].ans}\n`)}`,
+              }
+            }
+          )
+          ansBlocks.push(
+            {
+            type: "divider"
+            }
+          )
+         })
+        await web.chat.postMessage(block.daily_standup_ans({channelId:doc.channelId,quetions:doc.quetions,result,ansBlocks,notAnsUsers}))
 
       }
       catch(error){
@@ -247,7 +268,7 @@ function dailSatndupUpdate(){
   let rule = new schedule.RecurrenceRule();
    
   // collecting documents daily 10 AM - 30 4 * * *
-  let j2 = schedule.scheduleJob('30 6 * * *', function(){
+  let j2 = schedule.scheduleJob('17 1 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
@@ -262,9 +283,9 @@ function dailSatndupUpdate(){
         console.log('min',ISTmin)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          let j = schedule.scheduleJob(`35 6 * * *`, function(){
+          let j = schedule.scheduleJob(`18 1 * * *`, function(){
             
-           
+             
             doc.users.forEach(async(item)=>{
               try {
                 const standupUserRes = await web.conversations.open({
@@ -374,7 +395,7 @@ const handleEvent = async (event, teamId) => {
 
 app.post("/interactions",async(req,res)=>{
   // if (!signature.isVerified(req)) return res.status(400).send();
-  
+  const today = new Date()
   const payload = JSON.parse(req.body.payload);
   console.log("/interaction payload",payload)
   const teamId = payload.team.id;
@@ -508,10 +529,8 @@ app.post("/interactions",async(req,res)=>{
       })
       break;
     case "open_standup_dailog":
-      const today = new Date();
-      const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
-      const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
-      const todaysDate = ISTTime.toISOString();
+      
+      const todaysDate= dateConverter(today)
       const dialogmetadata= JSON.parse(action.value)
        const standupData= await Standup.findOne({name:dialogmetadata.name})
        const standupAns = await StandupAns.findOne({standupName:dialogmetadata.name,date:todaysDate.slice(0, 10)})
@@ -524,6 +543,12 @@ app.post("/interactions",async(req,res)=>{
               view: block.open_standup_dialog_with_value({...dialogmetadata,msgTs:payload.message.ts,standupId:standupData._id,creatorId:standupData.creatorId,quetions:standupData.quetions,standUpTime:standupData.standUpTime,userAns})
              })
           }
+          else{
+            await api.callAPIMethodPost("views.open",teamId,{
+              trigger_id:payload.trigger_id,
+              view: block.open_standup_dialog({...dialogmetadata,msgTs:payload.message.ts,standupId:standupData._id,creatorId:standupData.creatorId,quetions:standupData.quetions,standUpTime:standupData.standUpTime})
+             })
+          }
         }
         else{
           await api.callAPIMethodPost("views.open",teamId,{
@@ -533,6 +558,9 @@ app.post("/interactions",async(req,res)=>{
         }
       
        break;
+
+    case "show_yesterday_ans":
+        showYesterdaysAns(payload,action)
       
        
   }
@@ -856,6 +884,7 @@ server.listen(PORT,()=>{
   console.log("server running",PORT)
   const date = new Date("2023-01-31 12:30 AM");
 console.log(date.toUTCString())
+console.log(convertISTtoUTC("12:00 PM"))
   //2023-01-31T08:02:03.053Z
   //2023-01-31T08:03:47.075Z
  

@@ -1,5 +1,5 @@
 function convertISTtoUTC(istTime) {
-    let time = new Date();
+    let time = new Date('2023-02-01 '+ istTime);
     let parts = istTime.split(/\s+/);
     let hours = parseInt(parts[0].split(":")[0], 10);
     let minutes = parseInt(parts[0].split(":")[1], 10);
@@ -32,5 +32,13 @@ function convertISTtoUTC(istTime) {
       return true
     }
   }
+
+
+  function dateConverter(date){
+    const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
+    const ISTTime = new Date(date.getTime() + offset * 60 * 1000);
+    const todaysDate = ISTTime.toISOString();
+    return todaysDate
+  }
   
-  module.exports={convertISTtoUTC,getTimeComparison}
+  module.exports={convertISTtoUTC,getTimeComparison,dateConverter}

@@ -1188,46 +1188,199 @@ welcome_message: context => {
   }
   },
   open_standup_dialog:(context)=>{
-   return{
-    type: "modal",
-    title: {
-      type: "plain_text",
-      text: `Standup for  ${context.name}`,
-    },
-    callback_id: "post_answers_standup",
-    blocks:context.quetions.map((item)=>{
-      return {
-        block_id: `desc_${item._id}`,
-        type: "input",
-        label: {
+    if(context.update==="true"){
+      return{
+        view_id:context.view_id,
+        view:{
+        type: "modal",
+        title: {
           type: "plain_text",
-          text: `${item.quetion} ?`
+          text: `Standup for  ${context.name}`,
         },
-        optional: false,
-        element: {
-          action_id: `desc_${item._id}`,
-          type: "plain_text_input",
-          max_length: 600,
-          initial_value:"",
-          placeholder: {
+        callback_id: "post_answers_standup",
+        blocks:[...context.blocks,{
+          type: "section",
+          text: {
             type: "plain_text",
-            text:"required"
+            text: "Show yesterdays answers"
           },
-          multiline: true
+          accessory:{
+            type: "checkboxes",
+            action_id: "show_yesterday_ans",
+            initial_options:[
+              {
+                value: "yesterdayAns",
+                text: {
+                  type: "plain_text",
+                  text: "Show yesterday ans"
+                }
+              },
+            ],
+            options: [
+              {
+                value: "yesterdayAns",
+                text: {
+                  type: "plain_text",
+                  text: "Show yesterday ans"
+                }
+              },
+            ]
+          }
+         
+        } ],
+        close: {
+          type: "plain_text",
+          text: "Cancel"
+        },
+        submit: {
+          type: "plain_text",
+          text: "Submit"
+        },
+        private_metadata: JSON.stringify(context)
+       }
+    }
+  }
+  if(context.update==="false"){
+    return{
+      view_id:context.view_id,
+      view:{
+      type: "modal",
+      title: {
+        type: "plain_text",
+        text: `Standup for  ${context.name}`,
+      },
+      callback_id: "post_answers_standup",
+      blocks:[...context.quetions.map((item)=>{
+        return {
+          block_id: `desc_${item._id}`,
+          type: "input",
+          label: {
+            type: "plain_text",
+            text: `${item.quetion} ?`
+          },
+          optional: false,
+          element: {
+            action_id: `desc_${item._id}`,
+            type: "plain_text_input",
+            max_length: 600,
+            initial_value:"",
+            placeholder: {
+              type: "plain_text",
+              text:"required"
+            },
+            multiline: true
+          },
+          
+          
         }
-      }
-    }),
-    close: {
-      type: "plain_text",
-      text: "Cancel"
-    },
-    submit: {
-      type: "plain_text",
-      text: "Submit"
-    },
-    private_metadata: JSON.stringify(context)
-   }
+        
+      }),{
+        type: "section",
+        text: {
+          type: "plain_text",
+          text: "Show yesterdays answers"
+        },
+        accessory:{
+          type: "checkboxes",
+          action_id: "show_yesterday_ans",
+          
+          options: [
+            {
+              value: "yesterdayAns",
+              text: {
+                type: "plain_text",
+                text: "Show yesterday ans"
+              }
+            },
+          ]
+        }
+       
+      } ],
+      close: {
+        type: "plain_text",
+        text: "Cancel"
+      },
+      submit: {
+        type: "plain_text",
+        text: "Submit"
+      },
+      private_metadata: JSON.stringify(context)
+     
+  
+}
+    }
+  }
+  else{
+    return{
+      
+      type: "modal",
+      title: {
+        type: "plain_text",
+        text: `Standup for  ${context.name}`,
+      },
+      callback_id: "post_answers_standup",
+      blocks:[...context.quetions.map((item)=>{
+        return {
+          block_id: `desc_${item._id}`,
+          type: "input",
+          label: {
+            type: "plain_text",
+            text: `${item.quetion} ?`
+          },
+          optional: false,
+          element: {
+            action_id: `desc_${item._id}`,
+            type: "plain_text_input",
+            max_length: 600,
+            initial_value:"",
+            placeholder: {
+              type: "plain_text",
+              text:"required"
+            },
+            multiline: true
+          },
+          
+          
+        }
+        
+      }),{
+        type: "section",
+        text: {
+          type: "plain_text",
+          text: "Show yesterdays answers"
+        },
+        accessory:{
+          type: "checkboxes",
+          action_id: "show_yesterday_ans",
+          
+          options: [
+            {
+              value: "yesterdayAns",
+              text: {
+                type: "plain_text",
+                text: "Show yesterday ans"
+              }
+            },
+          ]
+        }
+       
+      } ],
+      close: {
+        type: "plain_text",
+        text: "Cancel"
+      },
+      submit: {
+        type: "plain_text",
+        text: "Submit"
+      },
+      private_metadata: JSON.stringify(context)
+     
+  
+}
+  }
   },
+
+  
 
   open_standup_dialog_with_value:(context)=>{
     return{
@@ -1289,15 +1442,18 @@ welcome_message: context => {
       {
         type: "divider"
       },
+      ...context.ansBlocks,
       {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `${context.quetions.map((que,i)=>`*${que.quetion}* \n${context.result.allAns.map((item)=>`<@${item.userId}> \n ${item.ans[i].ans}\n`)}
-          `) }`,
-        }
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `${context.notAnsUsers.length>0? `I didn't hear from${context.notAnsUsers.map((itm)=>`<@${itm.userId}>`)} ! Keep up your good work, team!` :'! Keep up your good work, team!' }`
+          }
+        ]
       }
-    ] 
+      
+    ],
     }
   },
   daily_standup_ans_single:(context)=>{
@@ -1316,12 +1472,12 @@ welcome_message: context => {
       {
         type: "divider"
       },
+      ...context.ansBlocks,
+    ],
+    attachments:[
       {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `${context.quetions.map((que,i)=>`*${que.quetion}* \n${context.result.allAns.map((item)=>`<@${item.userId}> \n ${item.ans[i].ans}\n`)}`) }`,
-        }
+        mrkdwn_in: ["text"],
+        footer:`${context.notAnsUsers.length>0? `I didn't hear from${context.notAnsUsers.map((itm)=>`<@${itm.userId}>`)} ! Keep up your good work, team!` :'! Keep up your good work, team!' }`
       }
     ] 
     }
