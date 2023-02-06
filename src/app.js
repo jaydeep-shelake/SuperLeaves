@@ -881,7 +881,7 @@ const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', min
 const convertedTime=convertISTtoServerTime("12:30 PM")
   console.log("currentTime",currentTime)
   console.log("converted",convertedTime)
-  console.log(currentTime<convertedTime)
+  console.log(currentTime>convertedTime)
  
 })
 
