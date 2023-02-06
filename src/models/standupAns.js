@@ -14,9 +14,10 @@ const standupAnsSchema = new mongoose.Schema({
                 questionId:{type:String},
                 question:{type:String},
                 ans:{type:String},
-
             }
-        ]
+        ],
+        skip:{type:Boolean,default:false},
+        leave:{type:Boolean,default:false}
     }
   ]
 })

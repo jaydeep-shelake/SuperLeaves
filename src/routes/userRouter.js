@@ -1,3 +1,4 @@
+const { default: axios } = require("axios")
 const express = require("express")
 const userRouter= express.Router()
 const request = require("request")
@@ -15,6 +16,13 @@ userRouter.get('/userlist',async(req,res)=>{
     res.status(200).send({users,toalPages:Math.ceil(total/PAGE_SIZE),userCount:total})
 
     
+})
+
+userRouter.get('/userByEmail',async(req,res)=>{
+    const {data}= await axios.get(`https://slack.com/api/users.lookupByEmail?email=${req.query.email}`,{
+        headers: { Authorization: "Bearer " + process.env.SLACK_TOKEN  }
+    })
+    res.send(data)
 })
 
 userRouter.get('/seed',async(req,res)=>{

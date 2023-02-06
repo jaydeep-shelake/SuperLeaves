@@ -24,8 +24,8 @@ const holidayRouter = require('./routes/holidayRouter');
 const Standup = require('./models/standup');
 const standupRouter = require('./routes/standupRouter');
 const StandupAns = require('./models/standupAns');
-const {convertISTtoUTC, getTimeComparison, dateConverter} = require('./converter');
-const { showYesterdaysAns } = require('./controllers/standUpModal');
+const {convertISTtoUTC, getTimeComparison, convertISTtoServerTime,dateConverter} = require('./converter');
+const { showYesterdaysAns, skipStandup, skipDueToLeave } = require('./controllers/standUpModal');
 // const rtm = new RTMClient(process.env.SLACK_TOKEN);
 const  web = new WebClient(process.env.SLACK_TOKEN)
 const app = express()
@@ -90,33 +90,11 @@ mongoose.connect(process.env.MONGO_URI,
       if(err) throw err;
       console.log('connected...')
       // scheduleCron()
-      dailSatndupUpdate()
+      // dailSatndupUpdate()
       // dailySatndupAnsPost()
   })
   
 
-// rtm.start()
-// .catch(e=>console.log(e))
-
-// rtm.on("ready",async()=>{
-//   console.log("bot srated") 
-//   // sendMessage("Hi SuperBotHere","#web-test") 
-// })
-// rtm.on("slack_event",(eventType,event)=>{
-
-  
-//   if (event && event.type === 'message'){
-//     if (event.text === '!apply') {
-        
-//         applyForLeave(event.channel,event.user)
-//     }
-// }
-
-//  if(event.tab==="home"){
-//   console.log("home tab opened by",event.user)
-//     // updateHomePage(event.channel,event.user)
-//  }
-// })
 
 //toISOString()
 
@@ -214,7 +192,7 @@ function dailySatndupAnsPost(doc){
   const hour=istSTringPost.split(":")[0] // post one hour before
   const min=istSTringPost.split(":")[1]; // 30 12 * * *
   console.log("hour from posting ans",hour)
-  let j2 = schedule.scheduleJob(`19 1 * * *`,function(){
+  let j2 = schedule.scheduleJob(`42 18 * * *`,function(){
     const today = new Date();
     const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
     const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
@@ -223,7 +201,14 @@ function dailySatndupAnsPost(doc){
     const users = doc.users // users in standup
     const ansUsers = result.allAns //users who had ans the standup
     const notAnsUsers = users.filter((item)=> !ansUsers.some(obj2 => obj2.userId === item.userId))
+    const skipedAnsUsers = ansUsers.filter((item)=>item.skip)
+    const leaveAnsUsers = ansUsers.filter((item)=>item.leave)
+
     console.log("not ans users",notAnsUsers)
+    console.log("skip ans users",skipedAnsUsers)
+    console.log("leave ans users",leaveAnsUsers)
+    
+
   if(result!==null){
    
       console.log("run at",hour,":",min)
@@ -236,7 +221,7 @@ function dailySatndupAnsPost(doc){
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: `${item.quetion}\n${result.allAns.map((itm)=>`<@${itm.userId}>\n${itm.ans[i].ans}\n`)}`,
+                text: `${item.quetion}\n${result.allAns.map((itm)=>`<@${itm.userId}>\n${itm.ans[i]?.ans}\n`)}`
               }
             }
           )
@@ -246,7 +231,7 @@ function dailySatndupAnsPost(doc){
             }
           )
          })
-        await web.chat.postMessage(block.daily_standup_ans({channelId:doc.channelId,quetions:doc.quetions,result,ansBlocks,notAnsUsers}))
+        await web.chat.postMessage(block.daily_standup_ans({channelId:doc.channelId,quetions:doc.quetions,result,ansBlocks,notAnsUsers,skipedAnsUsers,leaveAnsUsers}))
 
       }
       catch(error){
@@ -268,7 +253,7 @@ function dailSatndupUpdate(){
   let rule = new schedule.RecurrenceRule();
    
   // collecting documents daily 10 AM - 30 4 * * *
-  let j2 = schedule.scheduleJob('17 1 * * *', function(){
+  let j2 = schedule.scheduleJob('40 18 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
@@ -283,7 +268,7 @@ function dailSatndupUpdate(){
         console.log('min',ISTmin)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          let j = schedule.scheduleJob(`18 1 * * *`, function(){
+          let j = schedule.scheduleJob(`41 18 * * *`, function(){
             
              
             doc.users.forEach(async(item)=>{
@@ -311,12 +296,6 @@ function dailSatndupUpdate(){
 
   
      //this will run after one hour
-   
-  
-
-    //TODO: Find out the stand up in db and and post message to every one in standup
-    //TODO: Take the input before 30 min before and post theme on stand up time 
-    //TODO: storing that inputs to db and posting theme on channel on specific time
 }
 
 
@@ -538,10 +517,18 @@ app.post("/interactions",async(req,res)=>{
           const userAns= standupAns.allAns.find((item)=>item.userId===payload.user.id)
           console.log("user ans",userAns)
           if(userAns){
+             if(userAns.ans.length>0){
             await api.callAPIMethodPost("views.open",teamId,{
               trigger_id:payload.trigger_id,
               view: block.open_standup_dialog_with_value({...dialogmetadata,msgTs:payload.message.ts,standupId:standupData._id,creatorId:standupData.creatorId,quetions:standupData.quetions,standUpTime:standupData.standUpTime,userAns})
              })
+            }
+            else{
+              await api.callAPIMethodPost("views.open",teamId,{
+                trigger_id:payload.trigger_id,
+                view: block.open_standup_dialog({...dialogmetadata,msgTs:payload.message.ts,standupId:standupData._id,creatorId:standupData.creatorId,quetions:standupData.quetions,standUpTime:standupData.standUpTime})
+               })
+            }
           }
           else{
             await api.callAPIMethodPost("views.open",teamId,{
@@ -561,8 +548,13 @@ app.post("/interactions",async(req,res)=>{
 
     case "show_yesterday_ans":
         showYesterdaysAns(payload,action)
-      
-       
+        break;
+    case "skip_standup_dailog":
+        skipStandup(payload)
+        break;
+    case "on_leave_standup":
+         skipDueToLeave(payload)
+         break;
   }
 }
 else if(payload.type==="view_submission"){
@@ -732,8 +724,12 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
       } );    
         
     case "post_answers_standup":
+      const newDate = new Date();
+          const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
+          const ISTTime = new Date(newDate.getTime() + offset * 60 * 1000);
+          const date = ISTTime.toISOString();
        const ansmetadata = JSON.parse(payload.view.private_metadata)
-        const standup= await Standup.findOne({name:ansmetadata.name})
+        const standup= await Standup.findOne({name:ansmetadata.name,date:date.slice(0, 10)})
         const quetions = standup.quetions
         const standupChannelId = standup.channelId
                
@@ -742,20 +738,17 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
        const allAnsValue =payload.view.state.values
        const arrayOfAns = Object.values(allAnsValue) // converted objects to array
        const arrayOfAnsOnly = arrayOfAns.map(obj => Object.values(obj)[0].value)
-          const newDate = new Date();
-          const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
-          const ISTTime = new Date(newDate.getTime() + offset * 60 * 1000);
-          const date = ISTTime.toISOString();
+          
          const existingStandup= await StandupAns.findOne({standupName:ansmetadata.name,date:date.slice(0, 10)})
          if(existingStandup){
           const exitsingUserAns = existingStandup.allAns.find((item)=>item.userId==payload.user.id)
           if(exitsingUserAns){
-           await StandupAns.updateOne({standupName:ansmetadata.name},{
+           await StandupAns.updateOne({standupName:ansmetadata.name,date:date.slice(0, 10)},{
             $pull:{
               allAns:{userId:user}
             }
            })
-           const result= await StandupAns.updateOne({standupName:ansmetadata.name},{$addToSet:{
+           const result= await StandupAns.updateOne({standupName:ansmetadata.name,date:date.slice(0, 10)},{$addToSet:{
               allAns:{userId:user,ans:ansmetadata.quetions.map((item,i)=>{
                 return{
                   questionId:item._id,
@@ -765,6 +758,7 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
                 }
              })}
             }})
+            //TODO: if user sunit late ans diretly post message
             // const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
             //  if(getTimeComparison(`${standupTime} AM`, currentTime)){
             //   await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result}))
@@ -772,7 +766,7 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
             //  }
           }
           else{
-          await StandupAns.updateOne({standupName:ansmetadata.name},{$addToSet:{
+          await StandupAns.updateOne({standupName:ansmetadata.name,date:date.slice(0, 10)},{$addToSet:{
             allAns:{userId:user,ans:ansmetadata.quetions.map((item,i)=>{
               return{
                 questionId:item._id,
@@ -884,7 +878,7 @@ server.listen(PORT,()=>{
   console.log("server running",PORT)
   const date = new Date("2023-01-31 12:30 AM");
 console.log(date.toUTCString())
-console.log(convertISTtoUTC("12:00 PM"))
+console.log(convertISTtoServerTime("12:30 PM"))
   //2023-01-31T08:02:03.053Z
   //2023-01-31T08:03:47.075Z
  

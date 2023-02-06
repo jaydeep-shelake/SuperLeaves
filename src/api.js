@@ -34,7 +34,7 @@ const callAPIMethodPost = async (method, teamId, payload) => {
  }
  const getUserInfo = async(userId)=>{
   const {data} = await axios.get(`https://slack.com/api/users.info?user=${userId}`,{
-    headers: { Authorization: "Bearer " + process.env.SLACK_TOKEN  } 
+    headers: { Authorization: "Bearer " + process.env.SLACK_TOKEN  }, 
   })
   return data
  }
@@ -54,6 +54,8 @@ const joinChannel = async (teamId, channel) => {
   return data;
 };
 
+
+
 module.exports ={
     callAPIMethodPost,
     saveCredential,
@@ -71,3 +73,31 @@ module.exports ={
 //https://supershare.slack.com/oauth?client_id=110386328693.4590206438709&scope=&user_scope=identity.team%2Cidentity.basic%2Cidentity.email&granular_bot_scope=1&single_channel=0&install_redirect=&tracked=1&team=
 
 //https://e375-2401-4900-16e5-9687-d18e-503d-94bc-5520.in.ngrok.io/auth
+
+//https://edgeapi.slack.com/cache/T38BC9NLD/users/search?fp=05
+//fuzz: 1
+//include_profile_only_users: true
+//query: "j"
+
+// rtm.start()
+// .catch(e=>console.log(e))
+
+// rtm.on("ready",async()=>{
+//   console.log("bot srated") 
+//   // sendMessage("Hi SuperBotHere","#web-test") 
+// })
+// rtm.on("slack_event",(eventType,event)=>{
+
+  
+//   if (event && event.type === 'message'){
+//     if (event.text === '!apply') {
+        
+//         applyForLeave(event.channel,event.user)
+//     }
+// }
+
+//  if(event.tab==="home"){
+//   console.log("home tab opened by",event.user)
+//     // updateHomePage(event.channel,event.user)
+//  }
+// })

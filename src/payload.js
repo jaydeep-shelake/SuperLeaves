@@ -1182,9 +1182,42 @@ welcome_message: context => {
             style: "primary",
             value: JSON.stringify(context)
           },
-        ]
+          {
+          "type": "overflow",
+          action_id:'on_leave_standup',
+          "options": [
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Sick",
+                "emoji": true
+              },
+              "value": JSON.stringify(context)
+            },
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Vacation",
+                "emoji": true
+              },
+              "value": JSON.stringify(context)
+            },
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Day off",
+                "emoji": true
+              },
+              "value": JSON.stringify(context)
+            }
+          ],
+          
+          
+        }
+        ],
       }
-    ]
+    ],
+    private_metadata: JSON.stringify(context)
   }
   },
   open_standup_dialog:(context)=>{
@@ -1403,7 +1436,7 @@ welcome_message: context => {
            action_id: `desc_${item._id}`,
            type: "plain_text_input",
            max_length: 600,
-           initial_value:context.userAns.ans[i].ans,
+           initial_value:context.userAns.ans[i]?.ans,
            placeholder: {
              type: "plain_text",
              text:"required"
@@ -1443,6 +1476,25 @@ welcome_message: context => {
         type: "divider"
       },
       ...context.ansBlocks,
+      
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `${context.skipedAnsUsers.length>0? ` ${context.skipedAnsUsers.map((itm)=>`<@${itm.userId}>`)} skipped the todays standup` :'no one skipped' }`
+          }
+        ]
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `${context.leaveAnsUsers.length>0? ` ${context.leaveAnsUsers.map((itm)=>`<@${itm.userId}>`)} are on the the leave today` :'no one on leave' }`
+          }
+        ]
+      },
       {
         type: "context",
         elements: [
@@ -1451,8 +1503,7 @@ welcome_message: context => {
             text: `${context.notAnsUsers.length>0? `I didn't hear from${context.notAnsUsers.map((itm)=>`<@${itm.userId}>`)} ! Keep up your good work, team!` :'! Keep up your good work, team!' }`
           }
         ]
-      }
-      
+      },
     ],
     }
   },
@@ -1479,6 +1530,7 @@ welcome_message: context => {
         mrkdwn_in: ["text"],
         footer:`${context.notAnsUsers.length>0? `I didn't hear from${context.notAnsUsers.map((itm)=>`<@${itm.userId}>`)} ! Keep up your good work, team!` :'! Keep up your good work, team!' }`
       }
+      
     ] 
     }
   },

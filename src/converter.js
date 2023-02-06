@@ -40,5 +40,36 @@ function convertISTtoUTC(istTime) {
     const todaysDate = ISTTime.toISOString();
     return todaysDate
   }
+  function convertISTtoServerTime (istTime) {
+    const serverTime = new Date()
+    const serverOffset = serverTime.getTimezoneOffset()
   
-  module.exports={convertISTtoUTC,getTimeComparison,dateConverter}
+    const istOffset = 330 // IST is 330 minutes ahead of UTC
+    const offsetHours = Math.floor((istOffset + serverOffset) / 60)
+    const offsetMinutes = (istOffset + serverOffset) % 60
+  
+    const parts = istTime.split(/\s+/)
+    let hours = parseInt(parts[0].split(":")[0], 10)
+    let minutes = parseInt(parts[0].split(":")[1], 10)
+    let ampm = parts[1]
+    if (ampm === 'PM') {
+      hours = hours !== 12 ? hours + 12 - offsetHours : hours - offsetHours
+    } else if (ampm === 'AM') {
+      hours = hours === 12 ? hours - 12 - offsetHours : hours - offsetHours
+    }
+    minutes -= offsetMinutes
+    if (minutes < 0) {
+      minutes += 60
+      hours -= 1
+    }
+    serverTime.setHours(hours)
+    serverTime.setMinutes(minutes)
+  
+    const formatter = new Intl.DateTimeFormat('default', {
+      hour: 'numeric',
+      minute: 'numeric'
+    })
+  
+    return formatter.format(serverTime)
+  }
+  module.exports={convertISTtoUTC,getTimeComparison,dateConverter,convertISTtoServerTime}
