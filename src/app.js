@@ -733,7 +733,7 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
         const quetions = standup.quetions
         const standupChannelId = standup.channelId
                
-        const standupTime = convertISTtoUTC(standup.standUpTime)
+        const standupTime = convertISTtoServerTime(standup.standUpTime)
        const user=payload.user.id
        const allAnsValue =payload.view.state.values
        const arrayOfAns = Object.values(allAnsValue) // converted objects to array
@@ -758,12 +758,12 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
                 }
              })}
             }})
-            //TODO: if user sunit late ans diretly post message
-            // const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
-            //  if(getTimeComparison(`${standupTime} AM`, currentTime)){
-            //   await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result}))
+            //TODO: if user submit late ans diretly post message
+            const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
+             if(  standupTime < currentTime){
+              await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result,user}))
 
-            //  }
+             }
           }
           else{
           await StandupAns.updateOne({standupName:ansmetadata.name,date:date.slice(0, 10)},{$addToSet:{
@@ -776,11 +776,11 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
               }
            })}
           }})
-          // const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
-          // if(getTimeComparison(`${standupTime} AM`, currentTime)){
-          //  await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result}))
+          const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
+             if(  standupTime < currentTime){
+              await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result,user}))
 
-          // }
+             }
 
         }
          }
@@ -806,12 +806,11 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
             })}] 
            })
    
-          const result= await newStandupAns.save()
-          // const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
-          // if(getTimeComparison(`${standupTime} AM`, currentTime)){
-          //  await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result}))
+           const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
+           if(  standupTime < currentTime){
+            await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result,user}))
 
-          // }
+           }
          }
         
         return res.send(block.finish_standup())
@@ -878,9 +877,11 @@ server.listen(PORT,()=>{
   console.log("server running",PORT)
   const date = new Date("2023-01-31 12:30 AM");
 console.log(date.toUTCString())
-console.log(convertISTtoServerTime("12:30 PM"))
-  //2023-01-31T08:02:03.053Z
-  //2023-01-31T08:03:47.075Z
+const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
+const convertedTime=convertISTtoServerTime("12:30 PM")
+  console.log("currentTime",currentTime)
+  console.log("converted",convertedTime)
+  console.log(currentTime<convertedTime)
  
 })
 
