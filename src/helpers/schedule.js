@@ -7,8 +7,9 @@ async function multipleAlerts(doc,web,alert){
     const istString = convertISTtoServerTime(alert)
     const ISThour=parseInt(istString.split(":")[0]) // post one hour before
     const ISTmin=istString.split(":")[1];
+    const withoutAMmin = ISTmin.slice(0, -2)
     const date = dateConverter(new Date())
-    schedule.scheduleJob(`${ISTmin} ${ISThour} * * *`, async function(){
+    schedule.scheduleJob(`${withoutAMmin} ${ISThour} * * *`, async function(){
         const standupAns = await StandupAns.findOne({$and: [{date:date.slice(0,10)},{standupName:doc.name}]})
         const notAnsUsers =doc.users.filter((item)=> !standupAns.allAns.some(obj2 => obj2.userId === item.userId))
              
