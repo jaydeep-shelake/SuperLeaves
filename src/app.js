@@ -276,7 +276,7 @@ function dailSatndupUpdate(){
   let allStandUps=[]
   
   // collecting documents daily 10 AM - 30 4 * * *
-  schedule.scheduleJob('0 5 * * *', function(){
+  schedule.scheduleJob('10 6 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
@@ -289,10 +289,10 @@ function dailSatndupUpdate(){
         const ISThour=parseInt(istString.split(":")[0])-doc.firstAlert // post one hour before
         console.log('hour',ISThour)
         const ISTmin=istString.split(":")[1];
-        console.log('min',ISTmin)
+        const withoutAm = ISTmin.slice(0, -2)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          schedule.scheduleJob(`${ISTmin} ${ISThour} * * *`, function(){
+          schedule.scheduleJob(`15 6 * * *`, function(){
             
              
             doc.users.forEach(async(item)=>{
@@ -974,7 +974,7 @@ server.listen(PORT,()=>{
   const date = new Date("2023-01-31 12:30 AM");
 console.log(date.toUTCString())
 const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
-const convertedTime=convertISTtoServerTime("11:45 AM")
+const convertedTime=convertISTtoServerTime("11:30 AM")
   console.log("currentTime",currentTime)
   console.log("converted",convertedTime)
   console.log(currentTime>convertedTime)
