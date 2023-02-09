@@ -276,7 +276,7 @@ function dailSatndupUpdate(){
   let allStandUps=[]
   
   // collecting documents daily 10 AM - 30 4 * * *
-  schedule.scheduleJob('10 6 * * *', function(){
+  schedule.scheduleJob('14 6 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
