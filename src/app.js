@@ -73,7 +73,7 @@ const scheduleCron =()=>{
           }
      })
     console.log('Running daily task at 1:35 AM IST');
-  }.bind(null,timeZone));
+  }.bind(null));
 }
 
 
