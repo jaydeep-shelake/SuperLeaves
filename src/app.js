@@ -48,23 +48,15 @@ app.use('/api/users',userRouter)
 app.use('/api/team',teamRouter)
 app.use('/api/holiday',holidayRouter)
 app.use('/api/standup',standupRouter)
-const scheduleCron =()=>{
-  console.log("entered in cron")
- 
-  let rule = new schedule.RecurrenceRule();
-  rule.dayOfWeek = [0, new schedule.Range(0, 6)];
-  rule.hour = 1;
-  rule.minute = 35;
-  let timeZone = 'Asia/Kolkata';
-  
 
-  let j = schedule.scheduleJob(rule, function(){
-    const currentDate = new Date().toISOString();
-    console.log("current date",currentDate)
+const scheduleCron =()=>{
+  schedule.scheduleJob('30 4 * * 1-5', function(){
+    const currentDate = dateConverter(new Date());
+    console.log('checking for leaves')
     Leave.find({dateFrom: { $lte: currentDate},
      dateTo: {$gte: currentDate }})
      .then(async(leaves)=>{
-   
+      console.log('all leaves',leaves)
       if(leaves.length>0){
           leaves.forEach(async(item,i)=>{
             await api.callAPIMethodPost("users.profile.set","T38BC9NLD",{
@@ -92,7 +84,7 @@ mongoose.connect(process.env.MONGO_URI,
   err => {
       if(err) throw err;
       console.log('connected...')
-      // scheduleCron() //leaves job
+      scheduleCron() //leaves job
       dailSatndupUpdate() // standup bot job
       
   })
@@ -277,7 +269,7 @@ function dailSatndupUpdate(){
   let allStandUps=[]
   
   // collecting documents daily 10 AM - 30 4 * * *
-  schedule.scheduleJob('30 4 * * *', function(){
+  schedule.scheduleJob('30 4 * * 1-5', function(){
    
     Standup.find({})
     .then((result)=>{

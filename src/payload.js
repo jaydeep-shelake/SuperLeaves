@@ -826,7 +826,7 @@ welcome_message: context => {
   dailyNotification: context=>{
     return{
      channel:"C04H0C61MTR",
-     text:`Today’s upcoming absences:\n ${context.leaves.map((item,i)=>`:palm_tree: <@${item.userId}> \n \`${new Date(item.dateFrom).toDateString()}\` to \`${new Date(item.dateTo).toDateString()}\` \n`)}`
+     text:`Today’s upcoming absences:\n ${context.leaves.map((item,i)=>`:palm_tree: <@${item.userId}> \n \`${new Date(item.dateFrom).toDateString()}\` to \`${new Date(item.dateTo).toDateString()}\` \n`)} ${context.substitute&&`Substitute: <@${context.substituteId}>`}`.replace(/,/g, "")
     }
   },
 
