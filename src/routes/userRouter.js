@@ -25,6 +25,30 @@ userRouter.get('/userByEmail',async(req,res)=>{
     res.send(data)
 })
 
+userRouter.post('/add',async(req,res)=>{
+   const newUser = new User({
+    name:req.body.name,
+    userId:req.body.userId,
+    email:req.body.email,
+    avatar:req.body.avatar,
+    team:req.body.team,
+    admin:req.body.admin
+   })  
+  const user = await newUser.save()
+  res.send(user)
+})
+
+userRouter.get('/search',async(req,res)=>{
+    let regEx = new RegExp(req.query.name,'i');
+    const serachedUsers = await User.find({name:regEx})
+    if(serachedUsers){
+        res.send(serachedUsers)
+
+    }else{
+      res.status(402).send({message:'Opps No user found!!'})
+    }
+})
+
 userRouter.get('/seed',async(req,res)=>{
   const newEmp= employees.map((emy)=>{
     return{

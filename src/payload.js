@@ -98,8 +98,11 @@ welcome_message_testing: context => {
         text: {
           type: "mrkdwn",
           text:
-            `:wave: Hello there <@${context.userId}> I'm here to help you manage your leave so your team knows when you are OOO. To start click on button bellow to create leave.`
+            `:wave: Hello there <@${context.userId}> I'm here to help you manage your leaves and standups`
         }
+      },
+      {
+      type:"divider"
       },
       {
         type: "actions",
@@ -109,7 +112,7 @@ welcome_message_testing: context => {
             type: "button",
             text: {
               type: "plain_text",
-              text: "Create Leave"
+              text: ":palm_tree: Create Leave"
             },
             style: "primary",
             value: "make_leave"
@@ -119,7 +122,7 @@ welcome_message_testing: context => {
             type: "button",
             text: {
               type: "plain_text",
-              text: "View Analytics"
+              text: " :bar_chart: View Analytics"
             },
             value: "view_analytics"
 
@@ -129,7 +132,7 @@ welcome_message_testing: context => {
             type: "button",
             text: {
               type: "plain_text",
-              text: "Create Standup"
+              text: ":space_invader: Create Standup"
             },
             style: "primary",
             value: "make_standup"
@@ -238,71 +241,54 @@ welcome_message: context => {
             initial_option: {
               text: {
                 type: "plain_text",
-                text: "Earned Leaves"
+                text: "earned leaves"
               },
               value: "earned leaves"
             },
-            options: [
-              {
-                text: {
-                  type: "plain_text",
-                  text: "Festive Leaves"
-                },
-                value: "festive leaves"
-              },
-              {
-                text: {
-                  type: "plain_text",
-                  text: "Remote Work"
-                },
-                value: "remote"
-              },
-              {
-                text: {
-                  type: "plain_text",
-                  text: "Earned Leaves"
-                },
-                value: "earned leaves"
-              },
-              {
-                text: {
-                  type: "plain_text",
-                  text: "Sick Leaves"
-                },
-                value: "sick leaves"
-              }
-            ]
+            options:context.leaveTypeBlock
+          }
+        },
+        {
+          type: "input",
+          block_id: "approver",
+          label: {
+            type: "plain_text",
+            text: "Select Approver"
+          },
+          element: {
+            action_id: "approver",
+            type: "static_select",
+            placeholder: {
+              type: "plain_text",
+              text: "Select an item"
+            },
+            options:context.approversBlock
+          }
+        },
+        {
+          type: "input",
+          block_id: "substitute",
+          label: {
+            type: "plain_text",
+            text: "Select Substitute"
+          },
+          element: {
+            action_id: "substitute",
+            type: "static_select",
+            placeholder: {
+              type: "plain_text",
+              text: "Select an item"
+            },
+            options:context.membersBlock
           }
         },
 
         //substitute
 
-        {
-          block_id: "substitute",
-          type: "input",
-          label: {
-            type: "plain_text",
-            text: "Substitute"
-          },
-          element: {
-            action_id: "substitute_id",
-            type: "users_select"
-          }
-        },
+        
 
 
-        {
-          block_id: "approver",
-          type: "input",
-          label: {
-            type: "plain_text",
-            text: "Approver"
-          },
-          element: {
-            action_id: "approver_id",
-            type: "users_select"
-          }
-        },
+        
         {
           block_id: "desc",
           type: "input",
@@ -461,7 +447,42 @@ welcome_message: context => {
     };
   },
 
+  //
+  
+  exeed_leave_warning:context=>{
+     return{
+      response_action: "push",
+      view: {
+        callback_id: "exeed_leave",
+        type: "modal",
+        title: {
+          type: "plain_text",
+          text: "Warning"
+        },
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text:`*Waring:* `
+            }
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text:`\`* ${context.msg}* \``
+            }
+          },
+        ],
+        close: {
+          type: "plain_text",
+          text: "Back"
+        },
 
+      }
+     }
+  },
   // confrim leave warning
   confirm_leave_warning: context => {
     console.log(context)
@@ -685,6 +706,25 @@ welcome_message: context => {
           type: "divider"
         },
         {
+          block_id: "desc",
+          type: "input",
+          label: {
+            type: "plain_text",
+            text: "Reason"
+          },
+          optional: true,
+          element: {
+            action_id: "desc",
+            type: "plain_text_input",
+            max_length: 150,
+            placeholder: {
+              type: "plain_text",
+              text:"Type Message"
+            },
+            multiline: true
+          }
+        },
+        {
           type: "actions",
           block_id: "actionblock789",
           elements: [
@@ -716,6 +756,64 @@ welcome_message: context => {
 
       ]
     };
+  },
+
+  approved_message_block:context=>{
+   return {
+    channel:context.channel,
+    ts:context.msgTs,
+    text:`Thanks! Leave request is ${context.msg}.`,
+    blocks:[
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `Thanks! Leave request is ${context.msg}.`
+        }
+      },
+      {
+        type: "section",
+        text: {
+          type: "plain_text",
+          text: " ",
+  
+        }
+      },
+      {
+        type: "section",
+        block_id: "table",
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*From:* ${new Date(context.dateFrom).toDateString()}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*To:* ${new Date(context.dateTo).toDateString()}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*Leave type:* ${context.type}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*Notes:* ${context.desc}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*approver's comment:* ${context.approverDesc}`
+          }
+        ]
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*Status:* \`${context.msg}\``,
+        }
+      },
+     ]
+   }
   },
 
   substitute:context=>{
@@ -773,6 +871,10 @@ welcome_message: context => {
             {
               type: "mrkdwn",
               text: `*Notes:* ${context.leave.desc}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*approver's comment:* ${context.approverDesc}`
             }
           ]
         }
@@ -789,33 +891,7 @@ welcome_message: context => {
         text: "Analytics"
       },
       callback_id: "analytics",
-      blocks: [
-        
-        {
-          type: "section",
-          block_id: "table",
-          fields: [
-            {
-              type: "mrkdwn",
-              text: `*Earned Leaves*: \`${context?.earned} days \``
-            },
-            {
-              type: "mrkdwn",
-              text: `*Festive*: \`${context?.festive} days \``
-            },
-            {
-              type: "mrkdwn",
-              text: `*Sick*: \`${context?.sick} days\``
-            },
-            {
-              type: "mrkdwn",
-              text: `*Total*: \`${context?.total} days\``
-            },
-          ]
-        },
-
-
-      ]
+      blocks:context.analyticsBlock
     }
   },
 
@@ -1003,36 +1079,43 @@ welcome_message: context => {
                 type: "plain_text",
                 text: "10:30"
               },
-              value: "10:30"
+              value: "10:30 AM"
             },
             options: [
               {
                 text: {
                   type: "plain_text",
-                  text: "10:30"
+                  text: "10:30 AM"
                 },
-                value: "10:30"
+                value: "10:30 AM"
               },
               {
                 text: {
                   type: "plain_text",
-                  text: "11:00"
+                  text: "11:00 AM"
                 },
-                value: "11:00"
+                value: "11:00 AM"
               },
               {
                 text: {
                   type: "plain_text",
-                  text: "11:30"
+                  text: "11:30 AM"
                 },
-                value: "11:30"
+                value: "11:30 AM"
               },
               {
                 text: {
                   type: "plain_text",
-                  text: "12:00"
+                  text: "12:00 PM"
                 },
-                value: "12:00"
+                value: "12:00 PM"
+              },
+              {
+                text: {
+                  type: "plain_text",
+                  text: "12:30 PM"
+                },
+                value: "12:30 PM"
               }
             ]
           }
@@ -1456,11 +1539,54 @@ welcome_message: context => {
      private_metadata: JSON.stringify(context)
     }
    },
-  stantup_desc: context => {
-    return 
+  daily_satndup_ans_group_by_users: context => {
+   return{
+    channel:context.channelId,
+    text:"Hey <!here>, today's standup Web Daily Stand Up complete:coffee::coffee::coffee:",
+      blocks:[ {
+        type: "section",
+        text:{
+          type:"mrkdwn",
+          text:`Hey <!here>, today's standup Web Daily Stand Up complete:coffee::coffee::coffee:`
+        },
+        
+      },
+
+      {
+        type: "divider"
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `${context.skipedAnsUsers.length>0? ` ${context.skipedAnsUsers.map((itm)=>`<@${itm.userId}>`)} skipped the todays standup` :'no one skipped' }`
+          }
+        ]
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `${context.leaveAnsUsers.length>0? ` ${context.leaveAnsUsers.map((itm)=>`<@${itm.userId}>`)} are on the the leave today` :'no one on leave' }`
+          }
+        ]
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `${context.notAnsUsers.length>0? `I didn't hear from${context.notAnsUsers.map((itm)=>`<@${itm.userId}>`)} ! Keep up your good work, team!` :'! Keep up your good work, team!' }`
+          }
+        ]
+      },
+    ]
+   }
   },
   daily_standup_ans:(context)=>{
-    console.log("context form block kit",context)
+    
     return{
       channel:context.channelId,
       text:"Hey <!here>, today's standup Web Daily Stand Up complete:coffee::coffee::coffee:",
@@ -1508,30 +1634,41 @@ welcome_message: context => {
     }
   },
   daily_standup_ans_single:(context)=>{
-    console.log("context form block kit",context)
+   
     return{
       channel:context.channelId,
-      text:"Hey <!here>, today's standup Web Daily Stand Up complete:coffee::coffee::coffee:",
+      text:`Hey <!here>, <@${context.user}> submitted a stand-up:coffee: on Web Daily Stand Up`,
       blocks:[ {
         type: "section",
         text:{
           type:"mrkdwn",
-          text:`Hey <!here>, today's standup Web Daily Stand Up complete:coffee::coffee::coffee:`
+          text:`Hey <!here>, <@${context.user}> submitted a stand-up:coffee: on Web Daily Stand Up`
+        },
+        
+      },
+      {
+        type: "section",
+        text:{
+          type:"mrkdwn",
+          text:`${context.quetions.map((que,i)=>`*${que.quetion
+          }*\n ${context.userAns.map((itm)=>itm.ans[i].ans)} \n `)}`.replace(/,/g, "")
         },
         
       },
       {
         type: "divider"
       },
-      ...context.ansBlocks,
-    ],
-    attachments:[
       {
-        mrkdwn_in: ["text"],
-        footer:`${context.notAnsUsers.length>0? `I didn't hear from${context.notAnsUsers.map((itm)=>`<@${itm.userId}>`)} ! Keep up your good work, team!` :'! Keep up your good work, team!' }`
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `Keep up your good work, team!`
+          }
+        ]
       }
-      
-    ] 
+    ],
+    
     }
   },
 }

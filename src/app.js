@@ -26,6 +26,9 @@ const standupRouter = require('./routes/standupRouter');
 const StandupAns = require('./models/standupAns');
 const {convertISTtoUTC, getTimeComparison, convertISTtoServerTime,dateConverter} = require('./converter');
 const { showYesterdaysAns, skipStandup, skipDueToLeave } = require('./controllers/standUpModal');
+const LeaveType = require('./models/leaveType');
+const { getDaysDiff } = require('./helpers/helper');
+const { multipleAlerts } = require('./helpers/schedule');
 // const rtm = new RTMClient(process.env.SLACK_TOKEN);
 const  web = new WebClient(process.env.SLACK_TOKEN)
 const app = express()
@@ -89,9 +92,9 @@ mongoose.connect(process.env.MONGO_URI,
   err => {
       if(err) throw err;
       console.log('connected...')
-      // scheduleCron()
-      // dailSatndupUpdate()
-      // dailySatndupAnsPost()
+      // scheduleCron() //leaves job
+      dailSatndupUpdate() // standup bot job
+      
   })
   
 
@@ -127,13 +130,14 @@ app.post('/auth/callback', async (req, res) => {
         console.log("identity",identity)
          const user  = await User.findOne({userId:identity.user.id})
           if(user){  //update existing user
-           await User.findOneAndUpdate({userId:identity.user.id},{
+           const updatedUser=await User.findOneAndUpdate({userId:identity.user.id},{
               // workspace id
              userToken:accessToken, 
              teamId:identity.team.id,
               //user profile picture
              
            },{ new:true})
+           res.status(200).send({identity,token:accessToken,user:updatedUser});
           } 
           else {  //user dose not exists add to db
           const newUser= new User({
@@ -144,10 +148,11 @@ app.post('/auth/callback', async (req, res) => {
             avatar:identity.user.image_192
           })
           await newUser.save()
+          res.status(200).send({identity,token:accessToken,user:newUser});
           }
-         res.status(200).send({identity,token:accessToken});
+         
         
-          // At this point the user has logged in successfully with their account.
+          
         }
       }
     );
@@ -188,11 +193,11 @@ app.post('/events',(req,res)=>{
 function dailySatndupAnsPost(doc){
   
   console.log("came in posting mesage")
-  const istSTringPost = convertISTtoUTC(doc.standUpTime)
+  const istSTringPost = convertISTtoServerTime(doc.standUpTime)
   const hour=istSTringPost.split(":")[0] // post one hour before
   const min=istSTringPost.split(":")[1]; // 30 12 * * *
   console.log("hour from posting ans",hour)
-  let j2 = schedule.scheduleJob(`42 18 * * *`,function(){
+   schedule.scheduleJob(`${min} ${hour} * * *`,function(){
     const today = new Date();
     const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
     const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
@@ -200,20 +205,21 @@ function dailySatndupAnsPost(doc){
  StandupAns.findOne({$and: [{date:date},{standupName:doc.name}]}).then(async(result)=>{
     const users = doc.users // users in standup
     const ansUsers = result.allAns //users who had ans the standup
+    //TODO: Make a separte function for filtering the user
     const notAnsUsers = users.filter((item)=> !ansUsers.some(obj2 => obj2.userId === item.userId))
     const skipedAnsUsers = ansUsers.filter((item)=>item.skip)
     const leaveAnsUsers = ansUsers.filter((item)=>item.leave)
 
-    console.log("not ans users",notAnsUsers)
-    console.log("skip ans users",skipedAnsUsers)
-    console.log("leave ans users",leaveAnsUsers)
+  
     
 
   if(result!==null){
    
       console.log("run at",hour,":",min)
       try{
+        if(doc.messageViewType==="questions"){
         let ansBlocks=[]
+         
          doc.quetions.forEach((item,i)=>{
           ansBlocks.push(
 
@@ -221,7 +227,7 @@ function dailySatndupAnsPost(doc){
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: `${item.quetion}\n${result.allAns.map((itm)=>`<@${itm.userId}>\n${itm.ans[i]?.ans}\n`)}`
+                text: `*${item.quetion}*\n${result.allAns.map((itm)=>itm.ans.length>0&&`<@${itm.userId}>\n${itm.ans[i]?.ans}\n`)}`
               }
             }
           )
@@ -232,7 +238,26 @@ function dailySatndupAnsPost(doc){
           )
          })
         await web.chat.postMessage(block.daily_standup_ans({channelId:doc.channelId,quetions:doc.quetions,result,ansBlocks,notAnsUsers,skipedAnsUsers,leaveAnsUsers}))
+        }
+        else{ // group by user
+          let ansBlocks=[]
+          result.allAns.forEach((item)=>{
+           ansBlocks.push({
+            type:"section",
+            text: {
+              type: "mrkdwn",
+              text:`<@${item.userId}\n ${item.ans.map((itm)=>`*${itm.question}*\n${itm.ans}`)}`
+            }
+           })
+           ansBlocks.push(
+            {
+            type: "divider"
+            }
+          )
+          })
 
+          await web.chat.postMessage(block.daily_satndup_ans_group_by_users({channelId:doc.channelId,quetions:doc.quetions,result,ansBlocks,notAnsUsers,skipedAnsUsers,leaveAnsUsers}))
+        }
       }
       catch(error){
         console.log(`Error sending message  ${error}`)
@@ -244,31 +269,30 @@ function dailySatndupAnsPost(doc){
  })
 }.bind(null))
  //
+
 }
 function dailSatndupUpdate(){
   console.log("entered in job")
   let allStandUps=[]
-  // let timeZone = 'Asia/Kolkata';
-  // finding daily standups at 10 am moring 
-  let rule = new schedule.RecurrenceRule();
-   
+  
   // collecting documents daily 10 AM - 30 4 * * *
-  let j2 = schedule.scheduleJob('40 18 * * *', function(){
+  schedule.scheduleJob('0 5 * * *', function(){
     console.log("job run at",10,":",0)
     Standup.find({})
     .then((result)=>{
       allStandUps=result
       console.log('allStandsups',allStandUps)
-      allStandUps.forEach((doc)=>{
-       const istString = convertISTtoUTC(doc.standUpTime)
-       console.log("IST String",istString)
-        const ISThour=parseInt(istString.split(":")[0])-1 // post one hour before
+      result.forEach((doc)=>{
+        console.log("standup time",doc.standUpTime)
+       const istString =  convertISTtoServerTime(`${doc.standUpTime}`)
+
+        const ISThour=parseInt(istString.split(":")[0])-doc.firstAlert // post one hour before
         console.log('hour',ISThour)
         const ISTmin=istString.split(":")[1];
         console.log('min',ISTmin)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          let j = schedule.scheduleJob(`41 18 * * *`, function(){
+          schedule.scheduleJob(`${ISTmin} ${ISThour} * * *`, function(){
             
              
             doc.users.forEach(async(item)=>{
@@ -282,9 +306,12 @@ function dailSatndupUpdate(){
                  console.log(`Error sending message to ${item}: ${error}`)
               }
              })
-             dailySatndupAnsPost(doc)
+            
             
           }.bind(null));
+
+          multipleAlerts(doc,web,doc.secondAlert) 
+          dailySatndupAnsPost(doc)
         })
     })
     
@@ -386,15 +413,55 @@ app.post("/interactions",async(req,res)=>{
        User.findOne({userId:payload.user.id})
       .then((user)=>{
         // console.log("user",user)
-        const userTeam = "Web"
-         Team.findOne({team:userTeam})
+        const userTeam = user.team
+         Team.findOne({team:userTeam}) 
         .then(async(listOfMembers)=>{
           // console.log("list of members",listOfMembers)
-          const members = listOfMembers.members
+          const members = listOfMembers.members.filter((mem)=>mem.userId!==payload.user.id)
+          const approvers = listOfMembers.approvers
           // console.log("list of members",members)
+          let leaveTypeBlock=[]
+          let membersBlock=[]
+          let approversBlock=[]
+          const leaves_types = await LeaveType.find({})
+
+          leaves_types.forEach((item)=>{
+            leaveTypeBlock.push({
+              text: {
+                type: "plain_text",
+                text: item.type
+              },
+              value: item.type
+            })
+          })
+
+          members.forEach((item)=>{
+            membersBlock.push(
+              {
+                text: {
+                  type: "plain_text",
+                  text: item.name
+                },
+                value: item.userId
+              }
+            )
+          })
+
+          approvers.forEach((item)=>{
+            approversBlock.push(
+              {
+                text: {
+                  type: "plain_text",
+                  text: item.name
+                },
+                value: item.userId
+              }
+            )
+          })
+
           await api.callAPIMethodPost("views.open", teamId, {
             trigger_id: payload.trigger_id,
-            view:block.request_leave({ date})
+            view:block.request_leave({ date,leaveTypeBlock,membersBlock,approversBlock})
           });
         })
        
@@ -404,45 +471,52 @@ app.post("/interactions",async(req,res)=>{
     break;
     case "view_analytics":
       const leaveData = JSON.parse(payload.view.private_metadata)
-      console.log("leave data",leaveData)
+      let analyticsBlock =[]
+      leaveData.leavesData.forEach((item)=>{
+       analyticsBlock.push({
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text":`\n> ${item.type}`
+          },
+          {
+            "type": "mrkdwn",
+            "text": `\`${item.count} days \``
+          }
+        ]
+      },)
+       analyticsBlock.push({
+        type: "divider"
+        })
+
+      })
+
       await api.callAPIMethodPost("views.open",teamId,{
         trigger_id:payload.trigger_id,
-        view: block.viewAnalytics(leaveData)
+        view: block.viewAnalytics({analyticsBlock})
       })
-      // await  web.views.open({
-      //   trigger_id:payload.trigger_id,
-      //   view: block.viewAnalytics(leaveData)
-      // })
+      
       break;
     case "approve":
-      console.log("payload from opprove block",payload)
+      
       const metadata = JSON.parse(action.value).metadata
        console.log("metadata",metadata)
-        Leave.findOneAndUpdate({_id:metadata.leaveId},{approved:true},{new:true})
-       .then(async ()=>{
-          // update the chat of aprrove and reject button when the approver clicks any button
-          console.log("updated")
-         
-          
-          if(metadata.type==="earned leaves"){
-            await User.findOneAndUpdate({userId:metadata.user},{$inc: {'earnedLeaves':-1}})
-          }
-          if(metadata.type==="sick leaves"){
-            await User.findOneAndUpdate({userId:metadata.user},{$inc: {'sickLeaves':-1}})
-          }
-          if(metadata.type==="festive leaves"){
-            await User.findOneAndUpdate({userId:metadata.user},{$inc: {'festiveLeaves':-1}})
-          }
-          if(metadata.type==="remote"){
-            await User.findOneAndUpdate({userId:metadata.user},{$inc: {' remoteWork':-1}})
-          }
 
-          await api.callAPIMethodPost("chat.update",teamId,{
-            channel:metadata.channel,
-            ts:payload.message.ts,
-            text:"Thanks! Leave request is approved.",
-            blocks:[]
-          })
+        Leave.findOneAndUpdate({_id:metadata.leaveId},{approved:true},{new:true})
+       .then(async (result)=>{
+          // update the chat of aprrove and reject button when the approver clicks any button
+          const dateTo = new Date(result.dateTo);
+          const dateFrom = new Date(result.dateFrom);
+          const diffDays= getDaysDiff(dateTo,dateFrom) + 1  // differnce is less one day , hence add the one 
+
+          // substract the leave count from user profile with type match 
+           await User.updateOne({userId:payload.user.id,"leaveCount.type":metadata.type},{$inc:{"leaveCount.$.count": - diffDays}})
+
+
+         
+          await Leave.findOneAndUpdate({_id:metadata.leaveId},{approversDesc:payload.state.values.desc.value},{new:true})
+          await api.callAPIMethodPost("chat.update"," ",block.approved_message_block({...metadata,msgTs:payload.message.ts,msg:"Approved",approverDesc:payload.state.values.desc.desc.value}))
         
           const userRes = await api.callAPIMethodPost("conversations.open",teamId,{
             users: metadata.requester
@@ -451,29 +525,30 @@ app.post("/interactions",async(req,res)=>{
           await api.callAPIMethodPost("chat.postMessage",teamId,block.rejected_approved({
             channel:userRes.channel.id,
             msg:"Approved 	:white_check_mark:",
-            leave:metadata
+            leave:metadata,
+            approverDesc:payload.state.values.desc.desc.value
           }))
-        
 
-      
-         
+          if(metadata.substitute){
+            const resSubstitute = await api.callAPIMethodPost("conversations.open",payload.team.id,{
+              users:metadata.substitute
+            })
+            const newSubData ={...metadata,channel:resSubstitute.channel.id,requester:payload.user.id,leaveId:result._id,team:metadata.team}
+            // //send direct message to substitute
+            await api.callAPIMethodPost("chat.postMessage",payload.team.id,block.substitute({metadata:newSubData}))
+            }
+
+
        })
-       
-      
       break;
 
     case "reject":
       console.log("payload from opprove block",payload)
       const rejectMetadata = JSON.parse(action.value).metadata
       console.log("metadata",rejectMetadata)
- 
-    
-      await api.callAPIMethodPost("chat.update",teamId,{
-        channel:rejectMetadata.channel,
-        ts:payload.message.ts,
-        text:"Thanks! Leave request is rejected",
-        blocks:[]
-      })
+      await Leave.findOneAndUpdate({_id:rejectMetadata.leaveId},{approversDesc:payload.state.values.desc.value},{new:true})
+
+      await api.callAPIMethodPost("chat.update",teamId,block.approved_message_block({...rejectMetadata,msgTs:payload.message.ts,msg:"Rejected",approverDesc:payload.state.values.desc.desc.value}))
 
       
       const reUserRes = await api.callAPIMethodPost("conversations.open",teamId,{
@@ -481,11 +556,12 @@ app.post("/interactions",async(req,res)=>{
       })
 
     
-      await api.callAPIMethodPost("chat.postMessage",teamId,{
+      await api.callAPIMethodPost("chat.postMessage",teamId,block.rejected_approved({
         channel:reUserRes.channel.id,
         msg:`Rejected :no_entry_sign: contact <@${rejectMetadata.approver}> for the reason`,
-        leave:rejectMetadata
-      })
+        leave:rejectMetadata,
+        approverDesc:payload.state.values.desc.desc.value
+       }))
       break;
 
     case "make_standup":
@@ -569,25 +645,46 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
     case"request_leave":
         const values = payload.view.state.values;
          console.log("values",values)
-        // const dateNow = new Date().setHours(0, 0, 0, 0);
+        const type= values.leave_type.leave_type.selected_option.value
+        const sub = values.substitute.substitute.selected_option.value
+        const approver = values.approver.approver.selected_option.value
         let today = new Date()
         const dateFrom = new Date(values.date_from.date_from.selected_date);
         const dateTo = new Date(values.date_to.date_to.selected_date);
-        const diffTime =  Math.abs(today-dateFrom)
-        console.log("diff",diffTime)
-        const diffDays = Math.ceil(diffTime/(1000*60*60*24))
+        const diffDays = getDaysDiff(dateTo,dateFrom)+1
         const showWarning = diffDays <= 15
-        console.log("date diffrence",diffDays,"waring: ",showWarning)
+        const currentDate = dateConverter(new Date())
+       
          //checking if user alredy exits or not
          const existingUser = await User.findOne({userId:payload.user.id})
+         const leaveCount = existingUser.leaveCount.find((itm)=>itm.type===type) // users leave
+        
+         if((leaveCount.count - diffDays ) < 0 ){ // block user has finised leaves
+          return res.send(block.exeed_leave_warning({msg:`SORRY! , YOU CAN'T APPLY FOR ${type.toUpperCase()} LEAVE , YOU HAVE EXEEDED YOUR LEAVE`}))
+         }
+         
+         // block user if already on leave 
+         
+         const leaveRange  = await Leave.findOne({$and:[{userId:payload.user.id,dateTo: { $lte: dateTo.toISOString() },dateFrom:{ $gte:dateFrom.toISOString()}}]})
+         
+          console.log('leave data range' , leaveRange)
+          if(leaveRange){
+            return res.send(block.exeed_leave_warning({msg:`SORRY! , YOU CAN'T APPLY FOR ${type.toUpperCase()} LEAVE , YOU ARE ALREADY ON LEAVE , PLEASE CONTACT ADMINISTRATOR`}))
+          }
+          // if(currentDate < dateFrom.toISOString() || currentDate < dateTo.toISOString()){
+          //   return res.send(block.exeed_leave_warning({msg:`SORRY! , YOU CAN'T APPLY FOR ${type.toUpperCase()} LEAVE , YOU ARE ALREADY ON LEAVE , PLEASE CHOOSE THE IN FUTURE`}))
+          // }
+
+          
+
          const team = await Team.findOne({"members.slackId":payload.user.id})
          console.log("existing user",existingUser)
          let leave = {
           dateFrom: dateFrom,
           dateTo: dateTo,
-          type: values.leave_type.leave_type.selected_option.value,
-          approver: values.approver.approver_id.selected_user,
-          substitute:values.substitute.substitute_id.selected_user||null,
+          type,
+          approver: approver,
+          substitute:sub||null,
           user: payload.user.id,
           username:payload.user.name,
           desc: values.desc.desc.value || " ",
@@ -599,6 +696,7 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
           if(showWarning){
             return res.send(block.confirm_leave_warning({leave}))
           }
+         
           else{
             return res.send(block.confirm_leave({leave}))
           } 
@@ -613,6 +711,7 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
           if(showWarning){
             return res.send(block.confirm_leave_warning({leave}))
           }
+          
           else{
             return res.send(block.confirm_leave({leave}))
           } 
@@ -661,15 +760,6 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
          await Leave.findOneAndUpdate({userId:payload.user.id},{messageTs:result.message.ts},{new:true})
         })
 
-        if(metadata.substitute!==null){
-        const resSubstitute = await api.callAPIMethodPost("conversations.open",payload.team.id,{
-          users:metadata.substitute
-        })
-        const newSubData ={...metadata,channel:resSubstitute.channel.id,requester:payload.user.id,leaveId:result._id,team:metadata.team}
-        // //send direct message to substitute
-        await api.callAPIMethodPost("chat.postMessage",payload.team.id,block.substitute({metadata:newSubData}))
-        }
-
            })
           
         
@@ -711,17 +801,19 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
         })
         await newStandUp.save()
         await api.joinChannel(payload.team.id,standupmetadata.selectedChannel)
-        await api.callAPIMethodPost("chat.postMessage",payload.team.id,block.post_standup_message({name:standupmetadata.name,
-          users,
-          channelId:standupmetadata.selectedChannel,
-          weeks:selectedWeek,
-          standUpTime:selectedTime,
-          quetions:[{quetion:"What did you complete yesterday"},{quetion:"What do you commit to today"},{quetion:" When do you think you'll be done with that"},{quetion:"Any impediments in your way"}],
-          url:"http://localhost:8080/standup"}))
+
+        // await api.callAPIMethodPost("chat.postMessage",payload.team.id,block.post_standup_message({name:standupmetadata.name,
+        //   users,
+        //   channelId:standupmetadata.selectedChannel,
+        //   weeks:selectedWeek,
+        //   standUpTime:selectedTime,
+        //   quetions:[{quetion:"What did you complete yesterday"},{quetion:"What do you commit to today"},{quetion:" When do you think you'll be done with that"},{quetion:"Any impediments in your way"}],
+        //   url:"http://localhost:8080/standup"}))
          
         return res.send(block.finish_standup())
-       
+        
       } );    
+      break;
         
     case "post_answers_standup":
       const newDate = new Date();
@@ -733,10 +825,13 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
         const quetions = standup.quetions
         const standupChannelId = standup.channelId
                
-        const standupTime = convertISTtoServerTime(standup.standUpTime)
+        const standupTime = convertISTtoServerTime(standup.
+          standUpTime
+          )
        const user=payload.user.id
        const allAnsValue =payload.view.state.values
        const arrayOfAns = Object.values(allAnsValue) // converted objects to array
+       
        const arrayOfAnsOnly = arrayOfAns.map(obj => Object.values(obj)[0].value)
           
          const existingStandup= await StandupAns.findOne({standupName:ansmetadata.name,date:date.slice(0, 10)})
@@ -748,7 +843,7 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
               allAns:{userId:user}
             }
            })
-           const result= await StandupAns.updateOne({standupName:ansmetadata.name,date:date.slice(0, 10)},{$addToSet:{
+           await StandupAns.updateOne({standupName:ansmetadata.name,date:date.slice(0, 10)},{$addToSet:{
               allAns:{userId:user,ans:ansmetadata.quetions.map((item,i)=>{
                 return{
                   questionId:item._id,
@@ -758,12 +853,20 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
                 }
              })}
             }})
-            //TODO: if user submit late ans diretly post message
+            
+           
+              
             const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
-             if(  standupTime < currentTime){
-              await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result,user}))
 
-             }
+            if(  standupTime < currentTime){
+              const result= await StandupAns.findOne({standupName:ansmetadata.name,date:date.slice(0, 10)})
+             const userAns = result.allAns.filter((itm)=>itm.userId===user)
+             await web.chat.postMessage(block.daily_standup_ans_single({channelId:standupChannelId,quetions:quetions,userAns,user}))
+
+            }
+            
+           
+            
           }
           else{
           await StandupAns.updateOne({standupName:ansmetadata.name,date:date.slice(0, 10)},{$addToSet:{
@@ -776,9 +879,12 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
               }
            })}
           }})
+         
           const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
              if(  standupTime < currentTime){
-              await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result,user}))
+              const result= await StandupAns.findOne({standupName:ansmetadata.name,date:date.slice(0, 10)})
+              const userAns = result.allAns.filter((itm)=>itm.userId===user)
+              await web.chat.postMessage(block.daily_standup_ans_single({channelId:standupChannelId,quetions:quetions,userAns,user}))
 
              }
 
@@ -805,11 +911,13 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
                }
             })}] 
            })
-   
+          const result = await newStandupAns.save()
+         
            const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
            if(  standupTime < currentTime){
-            await web.chat.postMessage(block.daily_standup_ans({channelId:standupChannelId,quetions:quetions,result,user}))
-
+            const userAns = result.allAns.filter((itm)=>itm.userId===user)
+            await web.chat.postMessage(block.daily_standup_ans_single({channelId:standupChannelId,quetions:quetions,userAns,user}))
+           return
            }
          }
         
@@ -822,27 +930,15 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
 
 async function updateHomePage(event,teamId){
      // finding the user's data 
-  const userdata= await Leave.find({userId:event.user}) // must be an array
-  const totalRemainingLeaves = 32 - userdata.length
-  const earnedLeaves = userdata.filter(leave=>leave.type==='earned leaves'&&leave.approved)
-  const sickLeaves = userdata.filter(leave=>leave.type==='sick'&&leave.approved)
-  const festiveLeaves = userdata.filter(leave=>leave.type==="festive"&&leave.approved)
-  const totalRemainingSickLeaves = 12 - sickLeaves.length
-  const totalRemaingEarnedLeaves = 15 - earnedLeaves.length
-  const totalRemaingFestiveLeaves = 5 - festiveLeaves.length
-  console.log(totalRemaingEarnedLeaves,totalRemainingSickLeaves,totalRemaingFestiveLeaves)
-  // const userInfo = await User.findOne({userId:event.user})
+  const userdata= await User.findOne({userId:event.user}) // must be an array
   console.log(userdata)
   if(userdata){
     await api.callAPIMethodPost("views.publish",teamId,{
       user_id:event.user,
-      view:block.welcome_message_testing({userId:event.user,earned:totalRemaingEarnedLeaves,festive:totalRemaingFestiveLeaves,sick:totalRemainingSickLeaves,total:totalRemainingLeaves})
+      view:block.welcome_message_testing({userId:event.user,leavesData:userdata.leaveCount})
  
     })
-  //  await web.views.publish({
-  //    user_id:event.user,
-  //    view:block.welcome_message_testing({userId:event.user,earned:totalRemaingEarnedLeaves,festive:totalRemaingFestiveLeaves,sick:totalRemainingSickLeaves,total:totalRemainingLeaves})
-  //  })
+  
   }
 }
 
@@ -878,7 +974,7 @@ server.listen(PORT,()=>{
   const date = new Date("2023-01-31 12:30 AM");
 console.log(date.toUTCString())
 const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
-const convertedTime=convertISTtoServerTime("12:30 PM")
+const convertedTime=convertISTtoServerTime("11:45 AM")
   console.log("currentTime",currentTime)
   console.log("converted",convertedTime)
   console.log(currentTime>convertedTime)

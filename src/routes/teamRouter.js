@@ -45,6 +45,20 @@ teamRouter.put('/',async(req,res)=>{
   
 })
 
+teamRouter.put('/addMember',async(req,res)=>{
+const newUserInTeam=await Team.findOneAndUpdate({name:req.body.teamName},{
+  $push:{
+    members:{
+      name:req.body.name,
+      email:req.body.email,
+      avatar:req.body.avatar,
+      userId:req.body.userId
+    }
+  }
+})
+res.send(newUserInTeam)
+})
+
 teamRouter.post('/',async(req,res)=>{
     const newTeam = new Team({
         name:req.body.name,

@@ -12,7 +12,7 @@ const userSchema  = new mongoose.Schema({
      type:String,
      default:" ",
     },
-    teamId:{
+    team:{
     type:String,
     default:" "
     },
@@ -24,21 +24,34 @@ const userSchema  = new mongoose.Schema({
         type:String,
         default:" ",
     },
-    earnedLeaves:{
-        type:Number,
-        default:15,
+
+    admin:{
+        type:Boolean,
+        default:false
     },
-    sickLeaves:{
-        type:Number,
-        default:12,
-    },
-    festiveLeaves:{
-        type:Number,
-        default:5
-    },
-    remoteWork:{
-        type:Number,
-        default:8
+    leaveCount:{
+       type: [{
+            type:{type:String},
+            count:{type:Number},
+        }],
+       default:[
+        {
+            type:"earned leaves",
+            count:15
+        },
+        {
+            type:"sick leave",
+            count:12
+        },
+        {
+            type:"festive leaves",
+            count:5
+        },
+        {
+            type:"remote",
+            count:8
+        },
+       ]
     }
 
 

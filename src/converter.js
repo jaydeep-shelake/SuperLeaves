@@ -48,7 +48,7 @@ function convertISTtoUTC(istTime) {
     const offsetHours = Math.floor((istOffset + serverOffset) / 60)
     const offsetMinutes = (istOffset + serverOffset) % 60
   
-    const parts = istTime.split(/\s+/)
+    const parts = istTime.trim().split(/\s+/)
     let hours = parseInt(parts[0].split(":")[0], 10)
     let minutes = parseInt(parts[0].split(":")[1], 10)
     let ampm = parts[1]

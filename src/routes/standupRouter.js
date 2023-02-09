@@ -19,7 +19,8 @@ standupRouter.put('/:id',async(req,res)=>{
   const result = await Standup.findByIdAndUpdate(req.params.id,{
     quetions:req.body.questions,
     users:req.body.users,
-    standUpTime:req.body.time
+    standUpTime:req.body.time,
+    messageViewType:req.body.messageViewType
   },{
     new:true
   })

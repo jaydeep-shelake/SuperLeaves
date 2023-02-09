@@ -20,8 +20,10 @@ const standupSchema = new mongoose.Schema({
     value:{type:String}
    }
  ],
- standUpTime:{type:String}
-
+ standUpTime:{type:String},
+ firstAlert:{type:String},
+ secondAlert:{type:String},
+ messageViewType:{type:String,default:"questions"}
 })
 
 const Standup = mongoose.model("Standup",standupSchema)

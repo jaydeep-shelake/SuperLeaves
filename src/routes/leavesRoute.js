@@ -1,10 +1,11 @@
 const express = require("express")
 const { callAPIMethodPost } = require("../api")
 const Leave = require("../models/leave")
+const LeaveType = require("../models/leaveType")
 const User = require("../models/user")
 const block = require("../payload")
 const leavesRouter= express.Router()
-
+const {getDaysDiff} = require('../helpers/helper')
 
 leavesRouter.get('/',async(req,res)=>{
   const userId = req.query.userId
@@ -101,25 +102,13 @@ leavesRouter.put('/',async(req,res)=>{
   })
     Leave.findOneAndUpdate({messageTs:req.body.messageTs,userId},{approved:req.body.approved},{new:true})
     .then(async (result)=>{
-      await callAPIMethodPost("chat.update",req.body.teamId,{
-        channel:approverRes.channel.id,
-        ts:result.messageTs,
-        text:"Thanks! Leave request is approved.",
-        blocks:[]
-      })
-  
-      if(result.type==="earned leaves"){
-        await User.findOneAndUpdate({userId},{$inc: {'earnedLeaves':-1}})
-      }
-      if(result.type==="sick leaves"){
-        await User.findOneAndUpdate({userId},{$inc: {'sickLeaves':-1}})
-      }
-      if(result.type==="festive leaves"){
-        await User.findOneAndUpdate({userId},{$inc: {'festiveLeaves':-1}})
-      }
-      if(result.type==="remote"){
-        await User.findOneAndUpdate({userId},{$inc: {' remoteWork':-1}})
-      }
+      const diffDays = getDaysDiff(result.dateTo,result.dateFrom)+1
+      await User.updateOne({userId:userId,"leaveCount.type":result.type},{$inc:{"leaveCount.$.count": - diffDays}})
+      await callAPIMethodPost("chat.update",req.body.teamId,block.approved_message_block({...result,msgTs:req.body.messageTs,msg:"Approved",approverDesc:req.body.desc}))
+
+      
+
+     
      
       await callAPIMethodPost("chat.postMessage",req.body.teamId,block.rejected_approved({
         channel:userRes.channel.id,
@@ -137,5 +126,28 @@ leavesRouter.put('/',async(req,res)=>{
 })
 
 //TODO: reject leave route
+
+
+//add leave type 
+
+leavesRouter.post('/addLeaveType',async (req,res)=>{
+  // await User.updateMany({},{$unset:{leaveCount:1}})
+  const newLeaveType = new LeaveType({
+    type:req.body.leaveName,
+    noOfleaves:req.body.leaveCount
+  })
+  const leave=await newLeaveType.save()
+
+  //add the new leave type to user document
+  await User.updateMany({},{
+    $push:{
+      leaveCount:{
+        type:req.body.leaveName,
+        count:req.body.leaveCount
+      }
+    }
+  })
+  res.status(200).send(leave)
+})
 
 module.exports= leavesRouter

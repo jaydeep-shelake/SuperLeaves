@@ -55,8 +55,11 @@ const leaveSchema = new mongoose.Schema({
     },
     messageTs:{
         type:String
+    },
+    approversDesc:{
+        type:String
     }
-})
+},{timestamps:true})
 
 const Leave = mongoose.model("Leave",leaveSchema)
 module.exports=Leave
