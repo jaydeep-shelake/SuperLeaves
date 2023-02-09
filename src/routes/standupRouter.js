@@ -20,7 +20,9 @@ standupRouter.put('/:id',async(req,res)=>{
     quetions:req.body.questions,
     users:req.body.users,
     standUpTime:req.body.time,
-    messageViewType:req.body.messageViewType
+    messageViewType:req.body.messageViewType,
+    firstAlert:req.body.firstAlert,
+    secondAlert:req.body.secondAlert
   },{
     new:true
   })

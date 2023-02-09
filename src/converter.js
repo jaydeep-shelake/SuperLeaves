@@ -40,6 +40,7 @@ function convertISTtoUTC(istTime) {
     const todaysDate = ISTTime.toISOString();
     return todaysDate
   }
+  
   function convertISTtoServerTime (istTime) {
     const serverTime = new Date()
     const serverOffset = serverTime.getTimezoneOffset()

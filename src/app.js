@@ -27,7 +27,7 @@ const StandupAns = require('./models/standupAns');
 const {convertISTtoUTC, getTimeComparison, convertISTtoServerTime,dateConverter} = require('./converter');
 const { showYesterdaysAns, skipStandup, skipDueToLeave } = require('./controllers/standUpModal');
 const LeaveType = require('./models/leaveType');
-const { getDaysDiff } = require('./helpers/helper');
+const { getDaysDiff, substractStandupTime } = require('./helpers/helper');
 const { multipleAlerts } = require('./helpers/schedule');
 // const rtm = new RTMClient(process.env.SLACK_TOKEN);
 const  web = new WebClient(process.env.SLACK_TOKEN)
@@ -277,41 +277,41 @@ function dailSatndupUpdate(){
   let allStandUps=[]
   
   // collecting documents daily 10 AM - 30 4 * * *
-  schedule.scheduleJob('2 7 * * *', function(){
-    console.log("job run at",10,":",0)
+  schedule.scheduleJob('30 4 * * *', function(){
+   
     Standup.find({})
     .then((result)=>{
       allStandUps=result
       console.log('allStandsups',allStandUps)
       allStandUps.forEach((doc)=>{
         console.log("standup time",doc.standUpTime)
-       const istString =  convertISTtoServerTime(`${doc.standUpTime}`)
+       const istString =  convertISTtoServerTime(`${doc.firstAlert}`)
 
-        const ISThour=parseInt(istString.split(":")[0])-doc.firstAlert // post one hour before
+        const ISThour=parseInt(istString.split(":")[0]) // post first alert
         console.log('hour',ISThour)
         const ISTmin=istString.split(":")[1];
-        const withoutAm = ISTmin.slice(0, -2)
+        const minWithoutAM = ISTmin.slice(0, -2)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          // schedule.scheduleJob(`15 6 * * *`, function(){
+          schedule.scheduleJob(`${minWithoutAM} ${ISThour} * * *`, function(){
             
              
-          //   doc.users.forEach(async(item)=>{
-          //     try {
-          //       const standupUserRes = await web.conversations.open({
-          //       users:item.userId
-          //       })
-          //       await web.chat.postMessage(block.open_standup({userId:item.userId,name:doc.name,channel:standupUserRes.channel.id}))
-          //       console.log("send msg to every one")
-          //     } catch (error) {
-          //        console.log(`Error sending message to ${item}: ${error}`)
-          //     }
-          //    })
+            doc.users.forEach(async(item)=>{
+              try {
+                const standupUserRes = await web.conversations.open({
+                users:item.userId
+                })
+                await web.chat.postMessage(block.open_standup({userId:item.userId,name:doc.name,channel:standupUserRes.channel.id}))
+                console.log("send msg to every one")
+              } catch (error) {
+                 console.log(`Error sending message to ${item}: ${error}`)
+              }
+             })
             
             
-          // }.bind(null));
+          }.bind(null));
 
-          // multipleAlerts(doc,web,doc.secondAlert) 
+          multipleAlerts(doc,web,doc.secondAlert) 
           dailySatndupAnsPost(doc)
         })
     })
@@ -790,6 +790,8 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
       }
      
       Promise.all(promises).then(async() =>{
+        const firstAlert= substractStandupTime(60,selectedTime)
+        const secondAlert= substractStandupTime(15,selectedTime)
         const newStandUp = new Standup({
           name:standupmetadata.name,
           users,
@@ -798,7 +800,9 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
           standUpTime:selectedTime,
           creatorId:payload.user.id,
           quetions:[{quetion:"What did you complete yesterday?"},{quetion:"What do you commit to today"},{quetion:" When do you think you'll be done with that"},{quetion:"Any impediments in your way"}],
-          url:"http://localhost:8080/standup"
+          url:"http://localhost:8080/standup",
+          firstAlert,
+          secondAlert
         })
         await newStandUp.save()
         await api.joinChannel(payload.team.id,standupmetadata.selectedChannel)
