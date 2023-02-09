@@ -196,8 +196,9 @@ function dailySatndupAnsPost(doc){
   const istSTringPost = convertISTtoServerTime(doc.standUpTime)
   const hour=istSTringPost.split(":")[0] // post one hour before
   const min=istSTringPost.split(":")[1]; // 30 12 * * *
+  const minWithoutAM = min.slice(0, -2)
   console.log("hour from posting ans",hour)
-   schedule.scheduleJob(`${min} ${hour} * * *`,function(){
+   schedule.scheduleJob(`${minWithoutAM} ${hour} * * *`,function(){
     const today = new Date();
     const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
     const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
@@ -282,7 +283,7 @@ function dailSatndupUpdate(){
     .then((result)=>{
       allStandUps=result
       console.log('allStandsups',allStandUps)
-      result.forEach((doc)=>{
+      allStandUps.forEach((doc)=>{
         console.log("standup time",doc.standUpTime)
        const istString =  convertISTtoServerTime(`${doc.standUpTime}`)
 
@@ -292,25 +293,25 @@ function dailSatndupUpdate(){
         const withoutAm = ISTmin.slice(0, -2)
         // 30 12 * * *
         // this will be hour before on specifc standup time
-          schedule.scheduleJob(`15 6 * * *`, function(){
+          // schedule.scheduleJob(`15 6 * * *`, function(){
             
              
-            doc.users.forEach(async(item)=>{
-              try {
-                const standupUserRes = await web.conversations.open({
-                users:item.userId
-                })
-                await web.chat.postMessage(block.open_standup({userId:item.userId,name:doc.name,channel:standupUserRes.channel.id}))
-                console.log("send msg to every one")
-              } catch (error) {
-                 console.log(`Error sending message to ${item}: ${error}`)
-              }
-             })
+          //   doc.users.forEach(async(item)=>{
+          //     try {
+          //       const standupUserRes = await web.conversations.open({
+          //       users:item.userId
+          //       })
+          //       await web.chat.postMessage(block.open_standup({userId:item.userId,name:doc.name,channel:standupUserRes.channel.id}))
+          //       console.log("send msg to every one")
+          //     } catch (error) {
+          //        console.log(`Error sending message to ${item}: ${error}`)
+          //     }
+          //    })
             
             
-          }.bind(null));
+          // }.bind(null));
 
-          multipleAlerts(doc,web,doc.secondAlert) 
+          // multipleAlerts(doc,web,doc.secondAlert) 
           dailySatndupAnsPost(doc)
         })
     })
