@@ -502,7 +502,7 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
           if(leaveRange){
             return res.send(block.exeed_leave_warning({msg:`SORRY! , YOU CAN'T APPLY FOR ${type.toUpperCase()} LEAVE , YOU ARE ALREADY ON LEAVE , PLEASE CONTACT ADMINISTRATOR`}))
           }
-          if(currentDate > dateFrom.toISOString() || currentDate.toDateString() > dateTo.toISOString()){
+          if(currentDate > dateFrom.toISOString() || currentDate > dateTo.toISOString()){
             return res.send(block.exeed_leave_warning({msg:`SORRY! , YOU CAN'T APPLY FOR ${type.toUpperCase()} LEAVE  , PLEASE CHOOSE THE IN FUTURE`}))
           }
 
