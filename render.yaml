@@ -1,1 +1,1 @@
-worker: node helpers/helper.js
+worker: node helpers/schedule.js
