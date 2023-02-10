@@ -12,9 +12,9 @@ const signature = require("./verifySignature");
 const http = require('http')
 const block = require("./payload")
 const api = require("./api")
-const { RTMClient } = require('@slack/rtm-api');
+
 const {WebClient} = require("@slack/web-api")
-const {createMessageAdapter} =require("@slack/interactive-messages");
+
 const User = require('./models/user');
 const Team = require('./models/team')
 const leavesRouter = require('./routes/leavesRoute')
@@ -24,12 +24,11 @@ const holidayRouter = require('./routes/holidayRouter');
 const Standup = require('./models/standup');
 const standupRouter = require('./routes/standupRouter');
 const StandupAns = require('./models/standupAns');
-const {convertISTtoUTC, getTimeComparison, convertISTtoServerTime,dateConverter} = require('./converter');
+const { convertISTtoServerTime,dateConverter} = require('./converter');
 const { showYesterdaysAns, skipStandup, skipDueToLeave } = require('./controllers/standUpModal');
 const LeaveType = require('./models/leaveType');
 const { getDaysDiff, substractStandupTime } = require('./helpers/helper');
-const { multipleAlerts } = require('./helpers/schedule');
-// const rtm = new RTMClient(process.env.SLACK_TOKEN);
+const {scheduleCron,dailSatndupUpdate} = require('./helpers/schedule')
 const  web = new WebClient(process.env.SLACK_TOKEN)
 const app = express()
 const server = http.createServer(app)
@@ -48,34 +47,6 @@ app.use('/api/users',userRouter)
 app.use('/api/team',teamRouter)
 app.use('/api/holiday',holidayRouter)
 app.use('/api/standup',standupRouter)
-
-const scheduleCron =()=>{
-  schedule.scheduleJob('30 4 * * 1-5', function(){
-    const currentDate = dateConverter(new Date());
-    console.log('checking for leaves')
-    Leave.find({dateFrom: { $lte: currentDate},
-     dateTo: {$gte: currentDate }})
-     .then(async(leaves)=>{
-      console.log('all leaves',leaves)
-      if(leaves.length>0){
-          leaves.forEach(async(item,i)=>{
-            await api.callAPIMethodPost("users.profile.set","T38BC9NLD",{
-              user:item.userId,
-              profile:{
-              
-                    status_text:`PTO Till ${new Date(item.dateTo).toDateString()}`,
-                    status_emoji:":palm_tree:",
-                    status_expiration:0
-                  }
-            })
-          })
-            await api.callAPIMethodPost("chat.postMessage","T38BC9NLD",block.dailyNotification({leaves}))
-          }
-     })
-    console.log('Running daily task at 1:35 AM IST');
-  }.bind(null));
-}
-
 
 
 // mongodb atlas connection 
@@ -97,7 +68,7 @@ mongoose.connect(process.env.MONGO_URI,
 //authentication of user which gives back the code and from code we can access the access token
 
 app.post('/auth/callback', async (req, res) => {
- 
+ // TODO: Add auth controller here 
   try{
     var data = {
       form: {
@@ -182,141 +153,8 @@ app.post('/events',(req,res)=>{
   }
 
 })
-function dailySatndupAnsPost(doc){
-  
-  console.log("came in posting mesage")
-  const istSTringPost = convertISTtoServerTime(doc.standUpTime)
-  const hour=istSTringPost.split(":")[0] // post one hour before
-  const min=istSTringPost.split(":")[1]; // 30 12 * * *
-  const minWithoutAM = min.slice(0, -2)
-  console.log("hour from posting ans",hour)
-   schedule.scheduleJob(`${minWithoutAM} ${hour} * * *`,function(){
-    const today = new Date();
-    const offset = 330;  // IST offset is 5 hours and 30 minutes ahead of UTC
-    const ISTTime = new Date(today.getTime() + offset * 60 * 1000);
-    const date = ISTTime.toISOString().slice(0, 10);
- StandupAns.findOne({$and: [{date:date},{standupName:doc.name}]}).then(async(result)=>{
-    const users = doc.users // users in standup
-    const ansUsers = result.allAns //users who had ans the standup
-    //TODO: Make a separte function for filtering the user
-    const notAnsUsers = users.filter((item)=> !ansUsers.some(obj2 => obj2.userId === item.userId))
-    const skipedAnsUsers = ansUsers.filter((item)=>item.skip)
-    const leaveAnsUsers = ansUsers.filter((item)=>item.leave)
 
-  
-    
 
-  if(result!==null){
-   
-      console.log("run at",hour,":",min)
-      try{
-        if(doc.messageViewType==="questions"){
-        let ansBlocks=[]
-         
-         doc.quetions.forEach((item,i)=>{
-          ansBlocks.push(
-
-            {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text: `*${item.quetion}*\n${result.allAns.map((itm)=>itm.ans.length>0&&`<@${itm.userId}>\n${itm.ans[i]?.ans}\n`)}`
-              }
-            }
-          )
-          ansBlocks.push(
-            {
-            type: "divider"
-            }
-          )
-         })
-        await web.chat.postMessage(block.daily_standup_ans({channelId:doc.channelId,quetions:doc.quetions,result,ansBlocks,notAnsUsers,skipedAnsUsers,leaveAnsUsers}))
-        }
-        else{ // group by user
-          let ansBlocks=[]
-          result.allAns.forEach((item)=>{
-           ansBlocks.push({
-            type:"section",
-            text: {
-              type: "mrkdwn",
-              text:`<@${item.userId}\n ${item.ans.map((itm)=>`*${itm.question}*\n${itm.ans}`)}`
-            }
-           })
-           ansBlocks.push(
-            {
-            type: "divider"
-            }
-          )
-          })
-
-          await web.chat.postMessage(block.daily_satndup_ans_group_by_users({channelId:doc.channelId,quetions:doc.quetions,result,ansBlocks,notAnsUsers,skipedAnsUsers,leaveAnsUsers}))
-        }
-      }
-      catch(error){
-        console.log(`Error sending message  ${error}`)
-
-      }
-      
-    ;
-}
- })
-}.bind(null))
- //
-
-}
-function dailSatndupUpdate(){
-  console.log("entered in job")
-  let allStandUps=[]
-  
-  // collecting documents daily 10 AM - 30 4 * * *
-  schedule.scheduleJob('30 6 * * 1-5', function(){
-   
-    Standup.find({})
-    .then((result)=>{
-      allStandUps=result
-      console.log('allStandsups',allStandUps)
-      allStandUps.forEach((doc)=>{
-        console.log("standup time",doc.standUpTime)
-       const istString =  convertISTtoServerTime(`${doc.firstAlert}`)
-
-        const ISThour=parseInt(istString.split(":")[0]) // post first alert
-        console.log('hour',ISThour)
-        const ISTmin=istString.split(":")[1];
-        const minWithoutAM = ISTmin.slice(0, -2)
-        // 30 12 * * *
-        // this will be hour before on specifc standup time
-          schedule.scheduleJob(`${minWithoutAM} ${ISThour} * * *`, function(){
-            
-             
-            doc.users.forEach(async(item)=>{
-              try {
-                const standupUserRes = await web.conversations.open({
-                users:item.userId
-                })
-                await web.chat.postMessage(block.open_standup({userId:item.userId,name:doc.name,channel:standupUserRes.channel.id}))
-                console.log("send msg to every one")
-              } catch (error) {
-                 console.log(`Error sending message to ${item}: ${error}`)
-              }
-             })
-            
-            
-          }.bind(null));
-
-          multipleAlerts(doc,web,doc.secondAlert) 
-          dailySatndupAnsPost(doc)
-        })
-    })
-    
-    
-    
-  }.bind(null));
- 
-   
-
-  
-     //this will run after one hour
-}
 
 
 function scheduleUpdateTheStatus(timeToUpdate,userId,teamId,dateTo){
@@ -355,15 +193,15 @@ const j = schedule.scheduleJob(rule, async function(){
 // handle event  when user makes interactivity with app
 
 const handleEvent = async (event, teamId) => {
-  console.log("event",event)
-  console.log("teamid",teamId)
+  // console.log("event",event)
+ 
    switch(event.type){
      case "app_home_opened":{
       if(event.tab==="home"){
         updateHomePage(event,teamId)
       }
       else if(event.tab==="messages"){
-        console.log(event)
+        // console.log(event)
       }
       break;
      }
