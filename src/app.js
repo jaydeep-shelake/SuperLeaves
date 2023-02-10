@@ -142,8 +142,8 @@ app.post('/events',(req,res)=>{
     }
 
     case "event_callback": {
-     console.log("Team Id",req.body.team_id)
-     console.log("event",req.body.event)
+    
+     
      handleEvent(req.body.event,req.body.team_id)
     
     }
@@ -234,7 +234,7 @@ app.post("/interactions",async(req,res)=>{
   // if (!signature.isVerified(req)) return res.status(400).send();
   const today = new Date()
   const payload = JSON.parse(req.body.payload);
-  console.log("/interaction payload",payload)
+  // console.log("/interaction payload",payload)
   const teamId = payload.team.id;
   if(payload.type === "block_actions"){
   let action = payload.actions[0];
