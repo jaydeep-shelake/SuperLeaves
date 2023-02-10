@@ -1,16 +1,30 @@
 const express = require("express")
 const teamRouter= express.Router()
 const Team = require('../models/team')
-
+const User = require('../models/user')
 
 teamRouter.get('/',async(req,res)=>{
   const slackId = req.query.slackId
+  const teamName = req.query.teamName
   if(slackId){
     Team.find({"members.slackId":slackId})
     .then((result)=>{
       res.status(200).send(result)
     })
-  }else{
+  }
+  else if(teamName){
+    const PAGE_SIZE=15
+    const page = parseInt(req.query.page || "0")
+    
+    User.find({team:teamName})
+    .limit(PAGE_SIZE)
+    .skip(PAGE_SIZE*page)
+    .then((result)=>{
+       const total = result.length
+      res.status(200).send({users:result,toalPages:Math.ceil(total/PAGE_SIZE),userCount:total})
+    })
+  }
+  else{
     Team.find({}).then((result)=>{
       res.status(200).send(result)
   })
@@ -45,6 +59,7 @@ teamRouter.put('/',async(req,res)=>{
   
 })
 
+// single member
 teamRouter.put('/addMember',async(req,res)=>{
 const newUserInTeam=await Team.findOneAndUpdate({name:req.body.teamName},{
   $push:{
@@ -67,7 +82,18 @@ teamRouter.post('/',async(req,res)=>{
     })
     newTeam.save()
     .then((result)=>{
-     res.send(result)
+      let promises = [];
+      for (i = 0; i < req.body.members.length; i++) {
+        promises.push(
+          User.findOneAndUpdate({userId:req.body.members[i].userId},{team:req.body.name},{new:true})
+        )
+      }
+      Promise.all(promises)
+      .then(()=>{
+        res.send(result)
+      })
+      // team to user's profile
+
     })
    
 })

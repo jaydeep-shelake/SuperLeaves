@@ -342,7 +342,7 @@ app.post("/interactions",async(req,res)=>{
           const diffDays= getDaysDiff(dateTo,dateFrom) + 1  // differnce is less one day , hence add the one 
 
           // substract the leave count from user profile with type match 
-           await User.updateOne({userId:payload.user.id,"leaveCount.type":metadata.type},{$inc:{"leaveCount.$.count": - diffDays}})
+           await User.updateOne({userId:metadata.requester,"leaveCount.type":metadata.type},{$inc:{"leaveCount.$.count": - diffDays}})
 
 
          
