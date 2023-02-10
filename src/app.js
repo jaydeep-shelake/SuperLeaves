@@ -269,7 +269,7 @@ function dailSatndupUpdate(){
   let allStandUps=[]
   
   // collecting documents daily 10 AM - 30 4 * * *
-  schedule.scheduleJob('30 4 * * 1-5', function(){
+  schedule.scheduleJob('30 6 * * 1-5', function(){
    
     Standup.find({})
     .then((result)=>{
@@ -664,9 +664,9 @@ const  handleViewSubmission=async (payload,res,teamId)=>{
           if(leaveRange){
             return res.send(block.exeed_leave_warning({msg:`SORRY! , YOU CAN'T APPLY FOR ${type.toUpperCase()} LEAVE , YOU ARE ALREADY ON LEAVE , PLEASE CONTACT ADMINISTRATOR`}))
           }
-          // if(currentDate < dateFrom.toISOString() || currentDate < dateTo.toISOString()){
-          //   return res.send(block.exeed_leave_warning({msg:`SORRY! , YOU CAN'T APPLY FOR ${type.toUpperCase()} LEAVE , YOU ARE ALREADY ON LEAVE , PLEASE CHOOSE THE IN FUTURE`}))
-          // }
+          if(currentDate > dateFrom.toISOString() || currentDate.toDateString() > dateTo.toISOString()){
+            return res.send(block.exeed_leave_warning({msg:`SORRY! , YOU CAN'T APPLY FOR ${type.toUpperCase()} LEAVE  , PLEASE CHOOSE THE IN FUTURE`}))
+          }
 
           
 
