@@ -282,13 +282,138 @@ welcome_message: context => {
             options:context.membersBlock
           }
         },
-
         //substitute
+        {
+          block_id: "desc",
+          type: "input",
+          label: {
+            type: "plain_text",
+            text: "Notes"
+          },
+          optional: true,
+          element: {
+            action_id: "desc",
+            type: "plain_text_input",
+            max_length: 150,
+            placeholder: {
+              type: "plain_text",
+              text:
+                "eg. I am on vacation untill Jul 15th. If you have some urgent issue, please, write me email with urgent in subject."
+            },
+            multiline: true
+          }
+        }
+      ],
+      submit: {
+        type: "plain_text",
+        text: "Next"
+      }
+    };
+  },
 
-        
+  request_leave_with_users:context=>{
+    return {
+      type: "modal",
+      title: {
+        type: "plain_text",
+        text: "Request a leave"
+      },
+      callback_id: "request_leave",
+      blocks: [
+        {
+          type: "input",
+          block_id: "date_from",
+          label: {
+            type: "plain_text",
+            text: "From"
+          },
+          element: {
+            type: "datepicker",
+            action_id: "date_from",
+            initial_date: context.date,
+            placeholder: {
+              type: "plain_text",
+              text: "Select start date"
+            }
+          }
+        },
+        {
+          type: "input",
+          block_id: "date_to",
+          label: {
+            type: "plain_text",
+            text: "To"
+          },
+          element: {
+            type: "datepicker",
+            action_id: "date_to",
+            initial_date: context.date,
+            placeholder: {
+              type: "plain_text",
+              text: "Select end date"
+            }
+          }
+        },
 
-
-        
+        {
+          type: "input",
+          block_id: "leave_type",
+          label: {
+            type: "plain_text",
+            text: "Leave type"
+          },
+          element: {
+            action_id: "leave_type",
+            type: "static_select",
+            placeholder: {
+              type: "plain_text",
+              text: "Select an item"
+            },
+            initial_option: {
+              text: {
+                type: "plain_text",
+                text: "earned leaves"
+              },
+              value: "earned leaves"
+            },
+            options:context.leaveTypeBlock
+          }
+        },
+        {
+          type: "input",
+          block_id: "approver",
+          label: {
+            type: "plain_text",
+            text: "Select Approver"
+          },
+          element: {
+            action_id: "approver",
+            type: "users_select",
+            placeholder: {
+              type: "plain_text",
+              text: "Select an item"
+            },
+            
+          }
+        },
+        {
+          type: "input",
+          block_id: "substitute",
+          label: {
+            type: "plain_text",
+            text: "Select Substitute"
+          },
+          element: {
+            action_id: "substitute",
+            type: "users_select",
+            placeholder: {
+              type: "plain_text",
+              text: "Select an item"
+            },
+            
+          }
+        },
+        //substitute
         {
           block_id: "desc",
           type: "input",

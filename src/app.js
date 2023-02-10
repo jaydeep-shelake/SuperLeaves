@@ -247,14 +247,17 @@ app.post("/interactions",async(req,res)=>{
         const userTeam = user.team
          Team.findOne({team:userTeam}) 
         .then(async(listOfMembers)=>{
+
           // console.log("list of members",listOfMembers)
-          const members = listOfMembers.members.filter((mem)=>mem.userId!==payload.user.id)
-          const approvers = listOfMembers.approvers
-          // console.log("list of members",members)
           let leaveTypeBlock=[]
           let membersBlock=[]
           let approversBlock=[]
           const leaves_types = await LeaveType.find({})
+          if(listOfMembers){
+          const members = listOfMembers.members.filter((mem)=>mem.userId!==payload.user.id)
+          const approvers = listOfMembers.approvers
+          // console.log("list of members",members)
+          
 
           leaves_types.forEach((item)=>{
             leaveTypeBlock.push({
@@ -294,8 +297,16 @@ app.post("/interactions",async(req,res)=>{
             trigger_id: payload.trigger_id,
             view:block.request_leave({ date,leaveTypeBlock,membersBlock,approversBlock})
           });
+        }
+        else{
+          
+          await api.callAPIMethodPost("views.open", teamId, {
+            trigger_id: payload.trigger_id,
+            view:block.request_leave_with_users({ date,leaveTypeBlock})
+          });
+        }
         })
-       
+      
       })
       
       
@@ -342,6 +353,7 @@ app.post("/interactions",async(req,res)=>{
           const diffDays= getDaysDiff(dateTo,dateFrom) + 1  // differnce is less one day , hence add the one 
 
           // substract the leave count from user profile with type match 
+          console.log(metadata.requester)
            await User.updateOne({userId:metadata.requester,"leaveCount.type":metadata.type},{$inc:{"leaveCount.$.count": - diffDays}})
 
 
