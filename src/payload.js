@@ -508,7 +508,7 @@ welcome_message: context => {
             type: "section",
             text: {
               type: "mrkdwn",
-              text:`\`You have exeeded by ${context.leave.diffDays}\``
+              text:`\`You should apply for leave before 2 weeks \``
             }
           },
           {
