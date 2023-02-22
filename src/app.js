@@ -61,10 +61,7 @@ mongoose.connect(process.env.MONGO_URI, (err) => {
   if (err) throw err;
 
   console.log("connected...");
-  Leave.find({
-    dateFrom: { $lte: currentDate },
-    dateTo: { $gte: currentDate },
-  }).then(() => {});
+
   // scheduleCron(); //leaves job
   // dailSatndupUpdate(); // standup bot job
 });
