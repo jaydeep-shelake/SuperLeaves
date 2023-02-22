@@ -1226,7 +1226,7 @@ module.exports = {
             initial_option: {
               text: {
                 type: "plain_text",
-                text: "10:30",
+                text: "10:30 AM",
               },
               value: "10:30 AM",
             },

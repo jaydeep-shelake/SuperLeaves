@@ -59,9 +59,14 @@ app.use("/api/standup", standupRouter);
 
 mongoose.connect(process.env.MONGO_URI, (err) => {
   if (err) throw err;
+
   console.log("connected...");
-  scheduleCron(); //leaves job
-  dailSatndupUpdate(); // standup bot job
+  Leave.find({
+    dateFrom: { $lte: currentDate },
+    dateTo: { $gte: currentDate },
+  }).then(() => {});
+  // scheduleCron(); //leaves job
+  // dailSatndupUpdate(); // standup bot job
 });
 
 //toISOString()
@@ -965,13 +970,6 @@ module.exports = socket;
 
 server.listen(PORT, async () => {
   console.log("server running", PORT);
-  //   const date = new Date("2023-01-31 12:30 AM");
-  // console.log(date.toUTCString())
-  // const currentTime = new Date().toLocaleTimeString('en-US',{ hour: 'numeric', minute: 'numeric', hour12: true })
-  // const convertedTime=convertISTtoServerTime("11:30 AM")
-  // console.log("currentTime",currentTime)
-  // console.log("converted",convertedTime)
-  // console.log(currentTime>convertedTime)
 
   mealNofication();
 });
