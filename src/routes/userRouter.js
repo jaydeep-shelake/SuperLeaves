@@ -6,9 +6,12 @@ const { getUserInfo } = require("../api")
 const employees = require("../data")
 const User = require("../models/user")
 
-userRouter.get('/:id',async(req,res)=>{
+userRouter.get('/user/:id',async(req,res)=>{
+    if(req.params.id){
     const user = await User.findOne({userId:req.params.id})
     res.send(user.leaveCount)
+    }
+    
 })
 
 userRouter.get('/userInfo',async(req,res)=>{
