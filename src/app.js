@@ -566,7 +566,7 @@ const handleViewSubmission = async (payload, res, teamId) => {
       const values = payload.view.state.values;
       const aprover_metadata = JSON.parse(payload.view.private_metadata)
       const type = values.leave_type.leave_type.selected_option.value;
-      const sub = values.substitute.substitute.selected_option.value || ""
+      const sub = values.substitute.substitute.selected_option?.value ? values.substitute.substitute.selected_option.value:""
       if(aprover_metadata){
        approver = aprover_metadata.userId
       }
@@ -636,23 +636,26 @@ const handleViewSubmission = async (payload, res, teamId) => {
       let subInfo
       const userInfo = await api.getUserInfo(payload.user.id)
       const approverInfo = await api.getUserInfo(approver)
-      if(subInfo&&subInfo.length>0){
+        if(sub.length>=1){
         subInfo = await api.getUserInfo(sub)
-      }
+        console.log('subinfo',subInfo)
+        }
+        
+    
       let leave = {
         dateFrom: dateFrom,
         dateTo: dateTo,
         type,
         approver: approver,
         substitute: sub || null,
-        substituteName:subInfo.user.real_name,
-        substituteAvatar:subInfo.user.profile.image_192,
+        substituteName:subInfo?.user?.real_name ,
+        substituteAvatar:subInfo?.user?.profile?.image_192 ,
         user: payload.user.id,
         username:userInfo.user.real_name,
         userAvatar:userInfo.user.profile.image_192,
         approverAvatar:approverInfo.user.profile.image_192,
         approverName:approverInfo.user.real_name,
-        desc: values.desc.desc.value || " ",
+        desc: values?.desc?.desc?.value ===null?' ':values?.desc?.desc?.value ,
         showWarning,
         diffDays,
         holidayCount,

@@ -168,6 +168,7 @@ leavesRouter.put('/cancelLeave/:id',async(req,res)=>{
   try{
     const canceledLeave = await Leave.findByIdAndUpdate(req.params.id,{canceled:true})
     res.send(canceledLeave)
+    //TODO: if leave approved make the count to back to its initial 
   }
   catch{
     console.log("error while canceling leave",e)

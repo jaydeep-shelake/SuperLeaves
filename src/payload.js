@@ -259,6 +259,7 @@ module.exports = {
             type: "plain_text",
             text: "Leave type",
           },
+          optional: false,
           element: {
             action_id: "leave_type",
             type: "static_select",
@@ -528,7 +529,7 @@ module.exports = {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: context.leave.desc,
+              text: context.leave.desc===null?'No Description':context.leave.desc,
             },
           },
           {
@@ -562,7 +563,7 @@ module.exports = {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `<@${context.leave.substitute}>`,
+              text: context.leave.substitute ?`<@${context.leave.substitute}>`:'No Substitute',
             },
           },
         ],
@@ -708,7 +709,7 @@ module.exports = {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: context.leave.desc,
+              text:  context.leave.desc===null?'No Description':context.leave.desc,
             },
           },
           {
@@ -742,7 +743,7 @@ module.exports = {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `<@${context.leave.substitute}>`,
+              text: context.leave.substitute ?`<@${context.leave.substitute}>`:'No Substitute',
             },
           },
         ],
