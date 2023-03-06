@@ -218,7 +218,7 @@ app.post("/interactions", async (req, res) => {
         User.findOne({ userId: payload.user.id }).then((user) => {
           // console.log("user",user)
           const userTeam = user.team;
-          Team.findOne({ team: userTeam }).then(async (listOfMembers) => {
+          Team.findOne({name: userTeam }).then(async (listOfMembers) => {
             // console.log("list of members",listOfMembers)
             let leaveTypeBlock = [];
             let membersBlock = [];
