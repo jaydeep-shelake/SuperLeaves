@@ -1,14 +1,17 @@
 const express = require("express")
-const { callAPIMethodPost } = require("../api")
+const { callAPIMethodPost, getUserInfo } = require("../api")
 const Leave = require("../models/leave")
 const LeaveType = require("../models/leaveType")
 const User = require("../models/user")
 const block = require("../payload")
 const leavesRouter= express.Router()
 const {getDaysDiff} = require('../helpers/helper')
+const paginate = require("../helpers/pagination")
+
 
 leavesRouter.get('/',async(req,res)=>{
   const userId = req.query.userId
+  const leaveId  = req.query.leaveId
   const approverId = req.query.approverId
   const team = req.query.team
   try{
@@ -24,6 +27,10 @@ leavesRouter.get('/',async(req,res)=>{
       const allLeaves = await Leave.find({team})
       res.status(200).send(allLeaves)
     }
+    else if(leaveId){
+      const leave =await Leave.findById(leaveId)
+      res.status(200).send(leave)
+    }
  
   }
   catch(e){
@@ -31,6 +38,27 @@ leavesRouter.get('/',async(req,res)=>{
   }
 })
 
+leavesRouter.get('/allLeavesReq',async(req,res)=>{
+  try{
+     const PAGE_SIZE=15
+    const page = parseInt(req.query.page || "0")
+    const data = await paginate(Leave,PAGE_SIZE,page)
+    res.status(200).send(data)
+  }
+  catch(e){
+  console.log("error while getting leaves",e)
+  }
+  
+})
+
+leavesRouter.get('/allLeavesType',async(req,res)=>{
+    try {
+      const leaveType= await LeaveType.find({})
+      res.send(leaveType)
+    } catch (error) {
+       console.log(error)
+    }
+})
 
 leavesRouter.post('/', async(req,res)=>{
   const approverRes = await callAPIMethodPost("conversations.open",req.body.teamId,{
@@ -40,7 +68,12 @@ leavesRouter.post('/', async(req,res)=>{
     users:req.body.substitute
   })
  
-
+       let subInfo
+      const userInfo = await getUserInfo(req.body.slackId)
+      const approverInfo = await getUserInfo(req.body.approver)
+      if(subInfo&&subInfo.length>0){
+        subInfo = await getUserInfo(req.body.substitute)
+      }
   const newLeave = new  Leave({
     teamId:req.body.teamId,
     dateFrom:req.body.dateFrom,
@@ -51,7 +84,12 @@ leavesRouter.post('/', async(req,res)=>{
     approverId:req.body.approver,
     substituteId:req.body.substitute,
     name:req.body.name,
-    team:req.body.team
+    team:req.body.team,
+    substituteName:subInfo.user.real_name,
+    substituteAvatar:subInfo.user.profile.image_192,
+    userAvatar:userInfo.user.profile.image_192,
+    approverAvatar:approverInfo.user.profile.image_192,
+    approverName:approverInfo.user.real_name,
    })
    await newLeave.save()
    .then(async(result)=>{
@@ -67,7 +105,12 @@ leavesRouter.post('/', async(req,res)=>{
       requester:req.body.slackId,
       leaveId:result._id,
       channel:approverRes.channel.id,
-      team:req.body.team
+      team:req.body.team,
+      substituteName:subInfo.user.real_name,
+      substituteAvatar:subInfo.user.profile.image_192,
+       userAvatar:userInfo.user.profile.image_192,
+        approverAvatar:approverInfo.user.profile.image_192,
+        approverName:approverInfo.user.real_name,
     }
     await callAPIMethodPost("chat.postMessage",req.body.teamId,block.approve({metadata:newDataApprover}))
     .then((approveRes)=>{
@@ -106,10 +149,6 @@ leavesRouter.put('/',async(req,res)=>{
       await User.updateOne({userId:userId,"leaveCount.type":result.type},{$inc:{"leaveCount.$.count": - diffDays}})
       await callAPIMethodPost("chat.update",req.body.teamId,block.approved_message_block({...result,msgTs:req.body.messageTs,msg:"Approved",approverDesc:req.body.desc}))
 
-      
-
-     
-     
       await callAPIMethodPost("chat.postMessage",req.body.teamId,block.rejected_approved({
         channel:userRes.channel.id,
         msg:"Approved 	:white_check_mark:",
@@ -123,6 +162,17 @@ leavesRouter.put('/',async(req,res)=>{
       
 
     })   
+})
+
+leavesRouter.put('/cancelLeave/:id',async(req,res)=>{
+  try{
+    const canceledLeave = await Leave.findByIdAndUpdate(req.params.id,{canceled:true})
+    res.send(canceledLeave)
+  }
+  catch{
+    console.log("error while canceling leave",e)
+  }
+    
 })
 
 //TODO: reject leave route

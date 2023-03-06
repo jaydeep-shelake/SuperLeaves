@@ -18,7 +18,8 @@ const newTeamSchema  = new mongoose.Schema({
             name:{type:String},
             email:{type:String},
             avatar:{type:String},
-            userId:{type:String}
+            userId:{type:String},
+            leadOf:{type:String},
         }
     ]
 })

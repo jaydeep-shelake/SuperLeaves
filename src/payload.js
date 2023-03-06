@@ -206,8 +206,9 @@ module.exports = {
     };
   },
 
-  // block kit to open the modal for leav
+  // block kit to open the modal for leave
   request_leave: (context) => {
+   
     return {
       type: "modal",
       title: {
@@ -277,28 +278,12 @@ module.exports = {
         },
         {
           type: "input",
-          block_id: "approver",
-          label: {
-            type: "plain_text",
-            text: "Select Approver",
-          },
-          element: {
-            action_id: "approver",
-            type: "static_select",
-            placeholder: {
-              type: "plain_text",
-              text: "Select an item",
-            },
-            options: context.approversBlock,
-          },
-        },
-        {
-          type: "input",
           block_id: "substitute",
           label: {
             type: "plain_text",
             text: "Select Substitute",
           },
+          optional: true,
           element: {
             action_id: "substitute",
             type: "static_select",
@@ -334,6 +319,7 @@ module.exports = {
         type: "plain_text",
         text: "Next",
       },
+       private_metadata: JSON.stringify(context.approvers[0])
     };
   },
 
@@ -803,6 +789,34 @@ module.exports = {
     };
   },
 
+successModal:contex=>{
+ return {
+  response_action: "update",
+      view: {
+        callback_id: "finish_modal",
+        clear_on_close: true,
+        type: "modal",
+        title: {
+          type: "plain_text",
+          text: "Success :tada:",
+          emoji: true,
+        },
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `${contex}`
+            },
+          },
+        ],
+        close: {
+          type: "plain_text",
+          text: "Done",
+        },
+      },
+ }
+},
   // block kit to send aprover a aprove and reject button
   approve: (context) => {
     return {
@@ -1104,8 +1118,7 @@ module.exports = {
             initial_users: [context.userId],
           },
         },
-
-        {
+        { 
           type: "input",
           block_id: "week_type",
           label: {
@@ -1328,15 +1341,76 @@ module.exports = {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*Congratulation, your standup was created and scheduled!* \n The meeting time is \`${
-              context.standUpTime
-            }\` (India Time +05:30). Alice will remind you \`30 minutes\` before the meeting. Once you write your answers to Alice's questions, she reports to the \`${
-              context.name
-            }\` channel at the meeting time \n _Participants_:${context.users.map(
-              (item) => `<@${item.userId}> `
-            )}.\n_Interview questions_:\n${context.quetions.map(
-              (item) => `${item.quetion} \n`
-            )}
+            text: `*Congratulation, your standup was created and scheduled!* \n The meeting time is \`${context.standUpTime}\` (India Time +05:30). Alice will remind you \`30 minutes\` before the meeting. Once you write your answers to Alice's questions, she reports to the \`${context.name}\` channel at the meeting time\n _Participants_:${context.users.map((item) => `<@${item.userId}> `)}.\n_Interview questions_:\n${context.quetions.map((item) => `${item.quetion} \n`)}
+            `,
+          },
+        },
+        {
+          type: "divider",
+        },
+        {
+          type: "actions",
+          block_id: "actionblock789",
+          elements: [
+            {
+              action_id: "edit_channel",
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "Edit Channel",
+                emoji: true,
+              },
+              style: "primary",
+              value: JSON.stringify(context),
+            },
+            {
+              action_id: "edit_users",
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "Edit Users",
+                emoji: true,
+              },
+              style: "primary",
+              value: JSON.stringify(context),
+            },
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "Advance setting",
+                emoji: true,
+              },
+              style: "primary",
+              value: JSON.stringify(context),
+              url: context.url,
+            },
+          ],
+        },
+      ],
+    };
+  },
+  post_standup_message_edited: (context) => {
+    return {
+      channel: context.channelId,
+      ts:context.msgTs,
+      text: `*Congratulation, your standup was created and scheduled!* \n The meeting time is \`${
+        context.standUpTime
+      }\` (India Time +05:30). Alice will remind you \`30 minutes\` before the meeting. Once you write your answers to Alice's questions, she reports to the \`${
+        context.name
+      }\` channel at the meeting time \n _Participants_:${context.users.map(
+        (item) => `<@${item.userId}> ,`
+      )}.\n
+      _Interview questions_:\n
+      ${context.quetions.map((item) => `${item.quetion}? \n`)}
+
+      `,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*Congratulation, your standup was created and scheduled!* \n The meeting time is \`${context.standUpTime}\` (India Time +05:30). Alice will remind you \`30 minutes\` before the meeting. Once you write your answers to Alice's questions, she reports to the \`${context.name}\` channel at the meeting time\n _Participants_:${context.users.map((item) => `<@${item.userId}> `)}.\n_Interview questions_:\n${context.quetions.map((item) => `${item.quetion} \n`)}
             `,
           },
         },
@@ -1858,4 +1932,73 @@ module.exports = {
       ],
     };
   },
-};
+
+  edit_channel:(context)=>{
+    return {
+      type: "modal",
+      title: {
+        type: "plain_text",
+        text: "Select channel",
+      },
+      callback_id: "open_edit_channel",
+        blocks: [
+
+          {
+          type: "actions",
+          block_id: "select",
+          elements: [
+            {
+              type: "conversations_select",
+              placeholder: {
+                type: "plain_text",
+                text: "Select channel",
+                emoji: true,
+              },
+              initial_conversation:context.channelId,
+              filter: {
+                include: ["public", "private"],
+              },
+              action_id: "channel_select_edit",
+            },
+          ],
+        },
+        ],
+        submit: {
+          type: "plain_text",
+          text: "Submit",
+        },
+         private_metadata: JSON.stringify(context)
+      }
+    },
+    edit_users:(context)=>{
+          return {
+      type: "modal",
+      title: {
+        type: "plain_text",
+        text: "Select Users",
+      },
+      callback_id: "update_users",
+        blocks: [
+         {
+          block_id: "standup_users",
+          type: "input",
+          label: {
+            type: "plain_text",
+            text: "Who participates (no bot/app user please, at least 2 users)?",
+          },
+          element: {
+            action_id: "standup_user_id",
+            type: "multi_users_select",
+            initial_users: context.users,
+          },
+        },
+        ],
+        submit: {
+          type: "plain_text",
+          text: "Submit",
+        },
+         private_metadata: JSON.stringify(context)
+      }
+    }
+  }
+

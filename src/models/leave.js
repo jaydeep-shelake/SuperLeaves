@@ -46,7 +46,7 @@ const leaveSchema = new mongoose.Schema(
     },
     team: {
       type: String,
-      default: "Web",
+      default: "",
     },
     messageTs: {
       type: String,
@@ -58,6 +58,21 @@ const leaveSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+  approverAvatar:{
+    type:String,
+  },
+ userAvatar:{
+   type:String,
+ },
+ approverName:{
+  type:String
+ },
+ substituteName:{
+  type:String
+ },
+ substituteAvatar:{
+  type:String,
+ }
   },
   { timestamps: true }
 );

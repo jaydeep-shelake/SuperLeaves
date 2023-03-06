@@ -48,7 +48,7 @@ const userSchema  = new mongoose.Schema({
             count:5
         },
         {
-            type:"remote",
+            type:"remote works",
             count:8
         },
        ]

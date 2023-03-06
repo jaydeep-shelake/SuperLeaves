@@ -6,10 +6,12 @@ const User = require('../models/user')
 teamRouter.get('/',async(req,res)=>{
   const slackId = req.query.slackId
   const teamName = req.query.teamName
+  const admin = req.query.admin
   if(slackId){
-    Team.find({"members.slackId":slackId})
+    Team.findOne({"members.userId":slackId})
     .then((result)=>{
       res.status(200).send(result)
+    
     })
   }
   else if(teamName){

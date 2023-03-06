@@ -225,7 +225,7 @@ const scheduleCron = () => {
               item.dateTo.slice(0, 10),
               "YYYY-MM-DD"
             ).unix();
-            if (item.type !== "remote") {
+            if (item.type !== "remote works") {
               await api.callAPIMethodPost("users.profile.set", "T38BC9NLD", {
                 user: item.userId,
                 profile: {
@@ -251,7 +251,7 @@ const scheduleCron = () => {
           });
 
           const leavesWithoutRemote = leaves.filter(
-            (item) => item.type !== "remote"
+            (item) => item.type !== "remote works"
           );
           await api.callAPIMethodPost(
             "chat.postMessage",
@@ -339,7 +339,7 @@ function scheduleUpdateTheStatus(timeToUpdate, userId, teamId, dateTo, type) {
 
   schedule.scheduleJob(rule, async function () {
     const expTime = moment(dateTo.slice(0, 10), "YYYY-MM-DD").unix();
-    if (type !== "remote") {
+    if (type !== "remote works") {
       await api.callAPIMethodPost("users.profile.set", teamId, {
         user: userId,
         profile: {

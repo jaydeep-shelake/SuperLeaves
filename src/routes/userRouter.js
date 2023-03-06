@@ -2,8 +2,26 @@ const { default: axios } = require("axios")
 const express = require("express")
 const userRouter= express.Router()
 const request = require("request")
+const { getUserInfo } = require("../api")
 const employees = require("../data")
 const User = require("../models/user")
+
+
+
+userRouter.get('/userInfo',async(req,res)=>{
+    try{
+    const userInfo = await getUserInfo(req.query.userId)
+    res.send(userInfo)
+    }
+    catch(e){
+     console.log("error while geting info user",e)
+    }
+    
+})
+userRouter.get('/admin',async(req,res)=>{
+     const adminUers = await User.find({admin:true})
+     res.send(adminUers)
+})
 
 userRouter.get('/userlist',async(req,res)=>{
     const PAGE_SIZE=15
@@ -60,6 +78,11 @@ userRouter.get('/seed',async(req,res)=>{
     })
     const {data}= await User.insertMany(newEmp)
     res.send({length:data.length,data})
+})
+
+userRouter.put('/makeAdmin',async(req,res)=>{
+   const updatedUser= await User.findByIdAndUpdate(req.body._id,{admin:req.body.admin})
+   res.send(updatedUser)
 })
 
 module.exports=userRouter

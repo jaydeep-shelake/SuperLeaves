@@ -1,8 +1,9 @@
 const block = require('../payload')
 const StandupAns = require("../models/standupAns")
 const {dateConverter} = require('../converter');
-const { callAPIMethodPost } = require("../api");
+const { callAPIMethodPost, getChannel } = require("../api");
 const Standup = require('../models/standup');
+const { getUsersInfo } = require('../helpers/bot');
 async function showYesterdaysAns(payload,action){
     const nowDate = new Date()
     const yesterday=nowDate.setDate(nowDate.getDate() - 1);
@@ -135,8 +136,54 @@ else{
 }
 }
 
+async function editChanel(payload,action){
+ 
+  const action_data = JSON.parse(action.value)
+ await callAPIMethodPost("views.open","", {
+    trigger_id: payload.trigger_id,
+    view: block.edit_channel({channelId:action_data.channelId})
+  });
+}
+
+async function submitEditedChannel(payload,res){
+   const selectedChannel = payload.view.state.values.select.channel_select_edit.selected_conversation
+   const channelRes = await getChannel(selectedChannel);
+   const oldChannel = JSON.parse(payload.actions.value).standupId
+  const channelName = channelRes.channel.name
+  await Standup.findOneAndUpdate({_id:oldChannel},{name:channelName,channelId:channelRes.channel.id},{new:true})
+  return res.send(block.successModal("Channel updated successfuly !"))
+}
+
+async function editUsers(payload,action){
+  const action_data = JSON.parse(action.value)
+  console.log("action data",action_data)
+  const standup = await Standup.findOne({name:action_data.standupId})
+  const userIds = standup.users.map((user)=>user.userId)
+   await callAPIMethodPost("views.open","", {
+    trigger_id: payload.trigger_id,
+    view: block.edit_users({users:userIds,standupId:action_data.standupId})
+  });
+}
+
+async function updateUsers(payload,res){
+  const metadata = JSON.parse(payload.view.private_metadata)
+ const users= payload.view.state.values.standup_users.standup_user_id.selected_users
+  const usersInfo = await getUsersInfo(users)
+  await Standup.findOneAndUpdate({_id:metadata.standupId},{users:usersInfo},{new:true})
+  .then((standup)=>{
+   console.log("standup",standup)
+    callAPIMethodPost("chat.update"," ",block.post_standup_message_edited({...standup,standupId:standup._id}))
+  })
+  
+  return res.send(block.successModal("Users updated successfuly !"))
+}
+
 module.exports={
     showYesterdaysAns,
     skipStandup,
-    skipDueToLeave
+    skipDueToLeave,
+    editChanel,
+    submitEditedChannel,
+    editUsers,
+    updateUsers
 }

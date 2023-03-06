@@ -26,6 +26,10 @@ const {
   showYesterdaysAns,
   skipStandup,
   skipDueToLeave,
+   editChanel,
+   submitEditedChannel,
+   editUsers,
+   updateUsers
 } = require("./controllers/standUpModal");
 const LeaveType = require("./models/leaveType");
 const { getDaysDiff, substractStandupTime } = require("./helpers/helper");
@@ -36,6 +40,7 @@ const {
   scheduleUpdateTheStatus,
 } = require("./helpers/schedule");
 const Holiday = require("./models/holiday");
+const { migrate ,addTeamLeads} = require("./migration");
 const web = new WebClient(process.env.SLACK_TOKEN);
 const app = express();
 const server = http.createServer(app);
@@ -61,9 +66,16 @@ mongoose.connect(process.env.MONGO_URI, (err) => {
   if (err) throw err;
 
   console.log("connected...");
-
-  // scheduleCron(); //leaves job
-  // dailSatndupUpdate(); // standup bot job
+  // try{
+  //   // migrate()
+  //   // addTeamLeads()
+  //   // console.log('mingration done')
+  // }
+  // catch(e){
+  // console.log("error while migrating",e)
+  // }
+  scheduleCron(); //leaves job
+  dailSatndupUpdate(); // standup bot job
 });
 
 //toISOString()
@@ -256,6 +268,7 @@ app.post("/interactions", async (req, res) => {
                   leaveTypeBlock,
                   membersBlock,
                   approversBlock,
+                  approvers
                 }),
               });
             } else {
@@ -441,7 +454,7 @@ app.post("/interactions", async (req, res) => {
         const selectedChannel = payload.actions[0].selected_conversation;
         console.log(selectedChannel);
         const channelRes = await api.getChannel(selectedChannel);
-        console.log(channelRes);
+        
         await api.callAPIMethodPost("views.open", teamId, {
           trigger_id: payload.trigger_id,
           view: block.standupModal({
@@ -532,6 +545,12 @@ app.post("/interactions", async (req, res) => {
       case "on_leave_standup":
         skipDueToLeave(payload);
         break;
+      case "edit_channel":
+        editChanel(payload,action)
+        break;
+      case "edit_users":
+        editUsers(payload,action)
+        break;
     }
   } else if (payload.type === "view_submission") {
     return handleViewSubmission(payload, res, teamId);
@@ -543,11 +562,17 @@ const handleViewSubmission = async (payload, res, teamId) => {
   //action when user click on next button when modal is open
   switch (payload.view.callback_id) {
     case "request_leave":
+      let approver
       const values = payload.view.state.values;
-      console.log("values", values);
+      const aprover_metadata = JSON.parse(payload.view.private_metadata)
       const type = values.leave_type.leave_type.selected_option.value;
-      const sub = values.substitute.substitute.selected_option.value;
-      const approver = values.approver.approver.selected_option.value;
+      const sub = values.substitute.substitute.selected_option.value || ""
+      if(aprover_metadata){
+       approver = aprover_metadata.userId
+      }
+      else{
+      approver = values.approver.approver.selected_option.value;
+      }
       let today = new Date();
       const dateFrom = new Date(values.date_from.date_from.selected_date);
       const dateTo = new Date(values.date_to.date_to.selected_date);
@@ -600,7 +625,7 @@ const handleViewSubmission = async (payload, res, teamId) => {
         );
       }
 
-      const team = await Team.findOne({ "members.slackId": payload.user.id });
+      const team = await Team.findOne({ "members.userId": payload.user.id });
       //find  holiday count between given date
       const holidayCount = await Holiday.countDocuments({
         date: {
@@ -608,15 +633,25 @@ const handleViewSubmission = async (payload, res, teamId) => {
           $lte: dateTo.toISOString(),
         },
       });
-
+      let subInfo
+      const userInfo = await api.getUserInfo(payload.user.id)
+      const approverInfo = await api.getUserInfo(approver)
+      if(subInfo&&subInfo.length>0){
+        subInfo = await api.getUserInfo(sub)
+      }
       let leave = {
         dateFrom: dateFrom,
         dateTo: dateTo,
         type,
         approver: approver,
         substitute: sub || null,
+        substituteName:subInfo.user.real_name,
+        substituteAvatar:subInfo.user.profile.image_192,
         user: payload.user.id,
-        username: payload.user.name,
+        username:userInfo.user.real_name,
+        userAvatar:userInfo.user.profile.image_192,
+        approverAvatar:approverInfo.user.profile.image_192,
+        approverName:approverInfo.user.real_name,
         desc: values.desc.desc.value || " ",
         showWarning,
         diffDays,
@@ -664,6 +699,11 @@ const handleViewSubmission = async (payload, res, teamId) => {
         substituteId: metadata.substitute,
         team: metadata.team,
         holidayCount: metadata.holidayCount,
+        substituteAvatar:metadata.substituteAvatar,
+        substituteName:metadata.substituteName,
+        userAvatar:metadata.userAvatar,
+        approverAvatar:metadata.approverAvatar,
+        approverName:metadata.approverName
       });
       await newLeave.save(async (err, result) => {
         console.log(result._id);
@@ -749,12 +789,36 @@ const handleViewSubmission = async (payload, res, teamId) => {
             { quetion: " When do you think you'll be done with that" },
             { quetion: "Any impediments in your way" },
           ],
-          url: "http://localhost:8080/standup",
           firstAlert,
           secondAlert,
         });
-        await newStandUp.save();
-        await api.joinChannel(payload.team.id, standupmetadata.selectedChannel);
+        // await api.joinChannel(payload.team.id, standupmetadata.selectedChannel);
+
+        await newStandUp.save().then((result)=>{
+          api.callAPIMethodPost("chat.postMessage","",block.post_standup_message({
+             name: standupmetadata.name,
+          users,
+          channelId: standupmetadata.selectedChannel,
+          weeks: selectedWeek,
+          standUpTime: selectedTime,
+          creatorId: payload.user.id,
+          standupId:result._id,
+          quetions: [
+            { quetion: "What did you complete yesterday?" },
+            { quetion: "What do you commit to today" },
+            { quetion: " When do you think you'll be done with that" },
+            { quetion: "Any impediments in your way" },
+          ],
+          url: `http://localhost:8080/standup/${result._id}`,
+          firstAlert,
+          secondAlert,
+          })).then(async (msg)=>{
+           await  Standup.updateOne({_id:result._id},{$set:{msgTs:msg.message.ts}})
+          })
+          
+        })
+      
+        
         return res.send(block.finish_standup());
       });
       break;
@@ -922,8 +986,14 @@ const handleViewSubmission = async (payload, res, teamId) => {
           return;
         }
       }
-
       return res.send(block.finish_standup());
+      
+    case"open_edit_channel":
+      submitEditedChannel(payload,res)
+      break
+    case "update_users":
+       updateUsers(payload,res)
+      break
   }
 };
 
@@ -967,6 +1037,5 @@ module.exports = socket;
 
 server.listen(PORT, async () => {
   console.log("server running", PORT);
-
   mealNofication();
 });
